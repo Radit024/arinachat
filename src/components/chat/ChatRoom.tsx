@@ -131,7 +131,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
   };
   
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-[#f5f5f0]">
       {messages.length === 0 && isNewChat ? (
         // Welcome screen when no messages exist
         <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -190,8 +190,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
               New Chat
             </Button>
           </div>
-          <ScrollArea className="flex-1 px-4 md:px-20 py-4" ref={scrollAreaRef}>
-            <div className="max-w-3xl mx-auto">
+          <ScrollArea className="flex-1 px-4 py-6" ref={scrollAreaRef}>
+            <div>
               {messages.map((message) => (
                 <ChatMessage
                   key={message.id}
