@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, Share2, Menu } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -10,12 +11,16 @@ interface HeaderProps {
 
 const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
   return (
-    <header className="flex items-center justify-between p-4 border-b border-border bg-secondary">
+    <header className={cn(
+      "flex items-center justify-between p-2 md:p-3 border-b border-border bg-white",
+      !isSidebarOpen && "pl-4"
+    )}>
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
+          className="h-8 w-8 rounded-md hover:bg-secondary"
           aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
           <Menu size={20} />
@@ -25,7 +30,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
         </h1>
       </div>
       <div>
-        <Button variant="ghost" size="sm" className="flex items-center gap-1">
+        <Button variant="outline" size="sm" className="flex items-center gap-1 h-8">
           <Share2 size={16} /> Share
         </Button>
       </div>

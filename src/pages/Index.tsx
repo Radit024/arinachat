@@ -49,7 +49,7 @@ const Index = () => {
         isSidebarOpen ? 'md:ml-0' : 'md:ml-0 w-full'
       }`}>
         <Header toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
-        <main className="flex-1 overflow-hidden bg-arina-cream">
+        <main className="flex-1 overflow-hidden bg-white">
           <ChatRoom selectedFeature={selectedFeature} />
         </main>
       </div>

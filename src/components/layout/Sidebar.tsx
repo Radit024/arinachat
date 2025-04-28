@@ -8,8 +8,9 @@ import { analysisFeatures } from '@/data/analysisFeatures';
 import { useAuth } from '@/contexts/AuthContext';
 import { getChats, Chat } from '@/services/chatService';
 import { Link, useNavigate } from 'react-router-dom';
-import { format, isToday, isThisWeek, isThisMonth, subDays } from 'date-fns';
+import { format, isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -99,26 +100,34 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
     );
   };
 
+  // Apply different classes based on sidebar state
+  const sidebarClasses = cn(
+    "fixed inset-y-0 left-0 z-40 flex flex-col bg-arina-green border-r border-arina-medium transition-all duration-300 ease-in-out",
+    isOpen 
+      ? "w-72 translate-x-0" 
+      : "w-0 -translate-x-full md:translate-x-0 md:w-0",
+    "md:relative"
+  );
+
   return (
-    <aside 
-      className={`fixed inset-y-0 left-0 z-40 flex flex-col w-72 bg-arina-green border-r border-arina-medium transition-transform duration-300 ease-in-out ${
-        isOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:relative`}
-    >
-      <div className="flex items-center justify-between px-4 py-3">
-        <span className="text-xl font-bold text-arina-cream">Arina</span>
+    <aside className={sidebarClasses}>
+      <div className={cn(
+        "flex items-center justify-between px-4 py-3",
+        !isOpen && "md:hidden"
+      )}>
+        <span className="text-xl font-bold text-arina-cream whitespace-nowrap">Arina</span>
       </div>
       
-      <div className="p-4">
+      <div className={cn("p-4", !isOpen && "md:hidden")}>
         <Button
-          className="w-full bg-arina-medium hover:bg-arina-dark text-arina-cream flex items-center justify-center gap-2"
+          className="w-full bg-arina-medium hover:bg-arina-dark text-arina-cream flex items-center justify-center gap-2 whitespace-nowrap"
           onClick={handleNewChat}
         >
           <Plus size={16} /> New Chat
         </Button>
       </div>
       
-      <ScrollArea className="flex-1 px-3">
+      <ScrollArea className={cn("flex-1 px-3", !isOpen && "md:hidden")}>
         <div className="space-y-1 py-2">
           <h2 className="text-xs font-semibold text-arina-cream/70 px-2 py-1">ANALYSIS FEATURES</h2>
           {analysisFeatures.map((feature) => (
@@ -143,7 +152,7 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
         {renderChatList(last30DaysChats, "PREVIOUS 30 DAYS")}
       </ScrollArea>
       
-      <div className="border-t border-arina-medium p-4">
+      <div className={cn("border-t border-arina-medium p-4", !isOpen && "md:hidden")}>
         {user && (
           <div className="mb-4 px-2">
             <div className="text-sm text-arina-cream">{user.email}</div>
