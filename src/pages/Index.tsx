@@ -5,15 +5,45 @@ import Header from '@/components/layout/Header';
 import ChatRoom from '@/components/chat/ChatRoom';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import ProfileEditor from '@/components/memory/ProfileEditor';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { UserCircle2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { initializeMemoryUser } from '@/services/memoryService';
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false);
   const { chatId } = useParams();
+  const { user } = useAuth();
   
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+  
+  useEffect(() => {
+    const checkUserProfile = async () => {
+      if (user) {
+        const memoryUser = await initializeMemoryUser();
+        
+        if (memoryUser) {
+          // Check if user has completed their profile
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', memoryUser.id);
+            
+          if (!error && (!data || data.length === 0)) {
+            setShowProfilePrompt(true);
+          }
+        }
+      }
+    };
+    
+    checkUserProfile();
+  }, [user]);
   
   // Set up real-time subscription for messages
   useEffect(() => {
@@ -49,9 +79,50 @@ const Index = () => {
         isSidebarOpen ? 'md:ml-0' : 'md:ml-0 w-full'
       }`}>
         <Header toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
-        <main className="flex-1 overflow-hidden bg-[#f5f5f0]">
+        <main className="flex-1 overflow-hidden bg-[#F8F8F4]">
           <ChatRoom selectedFeature={selectedFeature} />
         </main>
+        
+        {/* Profile Prompt Dialog */}
+        {showProfilePrompt && (
+          <Dialog
+            defaultOpen={true}
+            onOpenChange={(open) => {
+              if (!open) setShowProfilePrompt(false);
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <div className="p-4 text-center">
+                <UserCircle2 className="w-12 h-12 mx-auto mb-4 text-primary" />
+                <h3 className="text-lg font-medium mb-2">Complete Your Business Profile</h3>
+                <p className="text-gray-500 mb-6">
+                  Help Arina provide more personalized agricultural business advice by completing your profile.
+                </p>
+                <ProfileEditor onProfileUpdate={() => setShowProfilePrompt(false)} />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+        
+        {/* Profile Button (fixed position) */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="fixed bottom-4 right-4 shadow-md bg-white"
+            >
+              <UserCircle2 className="mr-2 h-4 w-4" />
+              Business Profile
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <div className="p-2">
+              <h3 className="text-lg font-medium mb-4">Your Business Profile</h3>
+              <ProfileEditor />
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

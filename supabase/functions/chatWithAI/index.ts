@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, selectedFeature } = await req.json()
+    const { messages, selectedFeature, memoryContext } = await req.json()
     
     // Transform messages to Gemini format
     const geminiMessages = messages.map(message => ({
@@ -61,6 +61,49 @@ serve(async (req) => {
     }
     systemMessage += taskDescription;
     
+    // Inject memory context if available
+    if (memoryContext) {
+      let memoryString = "\n\nUser Memory Context:";
+      
+      // Format user profile information
+      if (memoryContext.profile) {
+        memoryString += `\n- Business: ${memoryContext.profile.business_name || 'Unknown'}`;
+        memoryString += `\n- Business Type: ${memoryContext.profile.business_type || 'Unknown'}`;
+        memoryString += `\n- Farm Size: ${memoryContext.profile.farm_size || 'Unknown'}`;
+        memoryString += `\n- Location: ${memoryContext.profile.location || 'Unknown'}`;
+        
+        if (memoryContext.profile.main_crops && memoryContext.profile.main_crops.length > 0) {
+          memoryString += `\n- Main Crops: ${memoryContext.profile.main_crops.join(', ')}`;
+        }
+      }
+      
+      // Add relevant entities if available
+      if (memoryContext.relevantEntities && memoryContext.relevantEntities.length > 0) {
+        memoryString += "\n\nRelevant Entities:";
+        memoryContext.relevantEntities.forEach((entity: any) => {
+          memoryString += `\n- ${entity.entity_type}: ${entity.entity_name}`;
+          if (entity.attributes && Object.keys(entity.attributes).length > 0) {
+            Object.entries(entity.attributes).forEach(([key, value]) => {
+              memoryString += `\n  - ${key}: ${value}`;
+            });
+          }
+        });
+      }
+      
+      // Add relevant message history if available
+      if (memoryContext.recentMessages && memoryContext.recentMessages.length > 0) {
+        memoryString += "\n\nRelevant Previous Conversations:";
+        memoryContext.recentMessages.forEach((msg: any) => {
+          memoryString += `\n- ${msg.role === 'user' ? 'User' : 'You'}: ${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}`;
+        });
+      }
+      
+      // Instructions on how to use memory
+      memoryString += "\n\nUse this context to personalize your responses, but do not explicitly mention that you're using stored information unless directly asked. Present your knowledge as if you naturally remember the user's details. If information is incomplete or missing, you can politely ask for it.";
+      
+      systemMessage += memoryString;
+    }
+    
     // Add system message to the beginning of the conversation
     const fullConversation = [
       {
@@ -72,7 +115,7 @@ serve(async (req) => {
       ...geminiMessages
     ]
 
-    console.log('Using Gemini API with feature:', currentFeature)
+    console.log('Using Gemini API with feature:', currentFeature, memoryContext ? 'with memory context' : 'without memory context')
     
     // Call Gemini API with gemini-1.5-flash model
     const apiKey = Deno.env.get('GEMINI_API_KEY')

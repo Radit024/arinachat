@@ -3,3 +3,6 @@ project_id = "yuqmvayaiiqbkeletlno"
 
 [functions.chatWithAI]
 verify_jwt = true
+
+[functions.generateEmbedding]
+verify_jwt = true

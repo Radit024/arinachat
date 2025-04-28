@@ -9,8 +9,24 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getChatMessages, sendMessage, ChatMessage as ChatMessageType } from '@/services/chatService';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { 
+  initializeMemoryUser, 
+  retrieveMemoryContext, 
+  createConversation, 
+  saveMessage,
+  getConversationMessages
+} from '@/services/memoryService';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import MemorySettings from '../memory/MemorySettings';
 
 interface ChatRoomProps {
   selectedFeature: string | null;
@@ -23,7 +39,25 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [isNewChat, setIsNewChat] = useState(false);
+  const [memoryUser, setMemoryUser] = useState<any>(null);
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const initMemory = async () => {
+      const memUser = await initializeMemoryUser();
+      setMemoryUser(memUser);
+      
+      // Check user preferences for memory settings
+      if (memUser?.preferences?.memoryEnabled !== undefined) {
+        setMemoryEnabled(memUser.preferences.memoryEnabled);
+      }
+    };
+    
+    if (user) {
+      initMemory();
+    }
+  }, [user]);
   
   useEffect(() => {
     if (!chatId) {
@@ -75,6 +109,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
         currentChatId = newChat[0].id;
         navigate(`/chat/${currentChatId}`);
         setIsNewChat(false);
+        
+        // Create conversation in memory system if memory is enabled
+        if (memoryEnabled && memoryUser) {
+          await createConversation(
+            memoryUser.id,
+            newChatTitle,
+            selectedFeature || undefined
+          );
+        }
       } catch (error: any) {
         toast({
           title: 'Error creating chat',
@@ -90,14 +133,26 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
       const newMessage = await sendMessage(currentChatId!, content, 'user');
       setMessages(prev => [...prev, newMessage]);
       
+      // Save message to memory if enabled
+      if (memoryEnabled && memoryUser && !isNewChat) {
+        await saveMessage(currentChatId!, content, 'user');
+      }
+      
       // Show thinking indicator
       setIsThinking(true);
       
-      // Call the AI edge function with the selected feature
+      // Retrieve memory context if enabled
+      let memoryContext = {};
+      if (memoryEnabled && memoryUser) {
+        memoryContext = await retrieveMemoryContext(memoryUser.id, content);
+      }
+      
+      // Call the AI edge function with the selected feature and memory context
       const response = await supabase.functions.invoke('chatWithAI', {
         body: { 
           messages: [...messages, newMessage],
-          selectedFeature: selectedFeature 
+          selectedFeature: selectedFeature,
+          memoryContext: memoryEnabled ? memoryContext : null
         }
       });
       
@@ -116,6 +171,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
       
       setMessages(prev => [...prev, aiMessage]);
       
+      // Save AI response to memory if enabled
+      if (memoryEnabled && memoryUser && !isNewChat) {
+        await saveMessage(currentChatId!, response.data.response, 'assistant');
+      }
+      
     } catch (error: any) {
       setIsThinking(false);
       toast({
@@ -130,8 +190,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
     navigate('/chat');
   };
   
+  const handleToggleMemory = (enabled: boolean) => {
+    setMemoryEnabled(enabled);
+  };
+  
   return (
-    <div className="flex flex-col h-full bg-[#f5f5f0]">
+    <div className="flex flex-col h-full bg-[#F8F8F4]">
       {messages.length === 0 && isNewChat ? (
         // Welcome screen when no messages exist
         <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -180,15 +244,43 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
             <h2 className="font-medium text-lg px-4">
               {isNewChat ? 'New Chat' : 'Chat'}
             </h2>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="flex items-center gap-1"
-              onClick={handleNewChat}
-            >
-              <Plus size={16} />
-              New Chat
-            </Button>
+            <div className="flex items-center gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex items-center gap-1"
+                  >
+                    <Settings size={16} />
+                    <span className="hidden md:inline">Memory Settings</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Memory Settings</DialogTitle>
+                    <DialogDescription>
+                      Control how Arina remembers your conversations and information.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <MemorySettings 
+                    memoryUser={memoryUser}
+                    memoryEnabled={memoryEnabled}
+                    onToggleMemory={handleToggleMemory}
+                  />
+                </DialogContent>
+              </Dialog>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={handleNewChat}
+              >
+                <Plus size={16} />
+                New Chat
+              </Button>
+            </div>
           </div>
           <ScrollArea className="flex-1 px-4 py-6" ref={scrollAreaRef}>
             <div>
