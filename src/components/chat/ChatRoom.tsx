@@ -93,9 +93,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
       // Show thinking indicator
       setIsThinking(true);
       
-      // Call the AI edge function
+      // Call the AI edge function with the selected feature
       const response = await supabase.functions.invoke('chatWithAI', {
-        body: { messages: [...messages, newMessage] }
+        body: { 
+          messages: [...messages, newMessage],
+          selectedFeature: selectedFeature 
+        }
       });
       
       setIsThinking(false);
