@@ -1,229 +1,39 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import ChatMessage from './ChatMessage';
+import React from 'react';
 import ChatInput from './ChatInput';
-import ThinkingIndicator from './ThinkingIndicator';
-import { useAuth } from '@/contexts/AuthContext';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { getChatMessages, sendMessage, ChatMessage as ChatMessageType } from '@/services/chatService';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import WelcomeScreen from './WelcomeScreen';
+import ChatHeader from './ChatHeader';
+import ChatMessages from './ChatMessages';
+import { useChatRoom } from '@/hooks/useChatRoom';
 
 interface ChatRoomProps {
   selectedFeature: string | null;
 }
 
 const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
-  const { user } = useAuth();
-  const { chatId } = useParams();
-  const navigate = useNavigate();
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
-  const [isThinking, setIsThinking] = useState(false);
-  const [isNewChat, setIsNewChat] = useState(false);
-  const [isOffTopic, setIsOffTopic] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    if (!chatId) {
-      setIsNewChat(true);
-      setMessages([]);
-      return;
-    }
-    
-    setIsNewChat(false);
-    
-    const fetchMessages = async () => {
-      if (chatId) {
-        const chatMessages = await getChatMessages(chatId);
-        setMessages(chatMessages);
-      }
-    };
-    
-    fetchMessages();
-  }, [chatId]);
-  
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollElement) {
-        scrollElement.scrollTop = scrollElement.scrollHeight;
-      }
-    }
-  }, [messages]);
-  
-  const handleSendMessage = async (content: string) => {
-    if (!user) return;
-    
-    // Reset off-topic flag
-    setIsOffTopic(false);
-    
-    let currentChatId = chatId;
-    
-    if (isNewChat) {
-      try {
-        // Create a new chat
-        const newChatTitle = content.substring(0, 30) + (content.length > 30 ? '...' : '');
-        const { data: newChat, error } = await supabase
-          .from('chats')
-          .insert([{ 
-            title: newChatTitle,
-            user_id: user.id
-          }])
-          .select();
-          
-        if (error) throw error;
-        currentChatId = newChat[0].id;
-        navigate(`/chat/${currentChatId}`);
-        setIsNewChat(false);
-      } catch (error: any) {
-        toast({
-          title: 'Error creating chat',
-          description: error.message,
-          variant: 'destructive'
-        });
-        return;
-      }
-    }
-    
-    // Add user message
-    try {
-      const newMessage = await sendMessage(currentChatId!, content, 'user');
-      setMessages(prev => [...prev, newMessage]);
-      
-      // Show thinking indicator
-      setIsThinking(true);
-      
-      // Call the AI edge function with the selected feature
-      const response = await supabase.functions.invoke('chatWithAI', {
-        body: { 
-          messages: [...messages, newMessage],
-          selectedFeature: selectedFeature 
-        }
-      });
-      
-      setIsThinking(false);
-      
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-      
-      // Check if the response indicates an off-topic message based on the selected feature
-      if (response.data.response.includes("I can only discuss") || 
-          response.data.response.includes("I can only assist with") || 
-          response.data.response.includes("I can only perform") ||
-          response.data.response.includes("I'm specialized in business topics")) {
-        setIsOffTopic(true);
-      }
-      
-      // Save AI response to the database
-      const aiMessage = await sendMessage(
-        currentChatId!, 
-        response.data.response, 
-        'assistant'
-      );
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-    } catch (error: any) {
-      setIsThinking(false);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to get AI response',
-        variant: 'destructive'
-      });
-    }
-  };
-  
-  const handleNewChat = () => {
-    navigate('/chat');
-  };
+  const {
+    messages,
+    isThinking,
+    isNewChat,
+    isOffTopic,
+    handleSendMessage,
+    handleNewChat
+  } = useChatRoom(selectedFeature);
   
   return (
     <div className="flex flex-col h-full bg-white">
       {messages.length === 0 && isNewChat ? (
         // Welcome screen when no messages exist
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <h1 className="text-3xl font-semibold mb-8 text-center">
-            How can Arina help you today?
-          </h1>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl w-full">
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start text-left"
-              onClick={() => handleSendMessage("Analyze market feasibility for a new product")}
-            >
-              <span className="font-medium mb-2">Market feasibility analysis</span>
-              <span className="text-sm text-gray-500">Evaluate your new business idea's potential</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start text-left"
-              onClick={() => handleSendMessage("Create a business forecast for next quarter")}
-            >
-              <span className="font-medium mb-2">Create a business forecast</span>
-              <span className="text-sm text-gray-500">Project your business growth trends</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start text-left"
-              onClick={() => handleSendMessage("Analyze ROI for new equipment investment")}
-            >
-              <span className="font-medium mb-2">Calculate ROI for investments</span>
-              <span className="text-sm text-gray-500">Understand the return on your investments</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start text-left"
-              onClick={() => handleSendMessage("Create SWOT analysis for my business")}
-            >
-              <span className="font-medium mb-2">Create a SWOT analysis</span>
-              <span className="text-sm text-gray-500">Identify strengths, weaknesses, opportunities, threats</span>
-            </Button>
-          </div>
-        </div>
+        <WelcomeScreen onExampleClick={handleSendMessage} />
       ) : (
         // Chat messages when conversation has started
         <>
-          <div className="border-b p-2 flex items-center justify-between">
-            <h2 className="font-medium text-lg px-4">
-              {isNewChat ? 'New Chat' : 'Chat'}
-            </h2>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="flex items-center gap-1"
-              onClick={handleNewChat}
-            >
-              <Plus size={16} />
-              New Chat
-            </Button>
-          </div>
-          <ScrollArea className="flex-1 px-4 md:px-20 py-4" ref={scrollAreaRef}>
-            <div className="max-w-3xl mx-auto">
-              {isOffTopic && (
-                <Alert className="mb-4 bg-amber-50 border-amber-200">
-                  <AlertTitle>Topic-specific mode active</AlertTitle>
-                  <AlertDescription>
-                    Arina is currently in a specialized mode. Please ask questions relevant to the selected analysis feature.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  sender={message.role}
-                  content={message.content}
-                  timestamp={new Date(message.created_at!).toLocaleTimeString()}
-                />
-              ))}
-              {isThinking && <ThinkingIndicator />}
-            </div>
-          </ScrollArea>
+          <ChatHeader isNewChat={isNewChat} onNewChat={handleNewChat} />
+          <ChatMessages 
+            messages={messages} 
+            isThinking={isThinking} 
+            isOffTopic={isOffTopic} 
+          />
         </>
       )}
       <ChatInput onSendMessage={handleSendMessage} />
