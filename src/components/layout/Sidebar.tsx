@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getChats, Chat } from '@/services/chatService';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, isToday, isThisWeek, isThisMonth, subDays } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SidebarProps {
   isOpen: boolean;

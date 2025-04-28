@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { User } from '@supabase/supabase-js';
 
 export interface ChatMessage {
   id?: string;
@@ -8,6 +9,7 @@ export interface ChatMessage {
   content: string;
   role: 'user' | 'assistant';
   created_at?: string;
+  user_id?: string;
 }
 
 export interface Chat {
@@ -15,18 +17,23 @@ export interface Chat {
   title: string;
   created_at: string;
   updated_at: string;
+  user_id: string;
 }
 
 export const createChat = async (title: string) => {
-  const user = supabase.auth.getUser();
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
-
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
     const { data, error } = await supabase
       .from('chats')
-      .insert([{ title }])
+      .insert([{ 
+        title,
+        user_id: user.id
+      }])
       .select()
       .single();
 
@@ -70,7 +77,7 @@ export const getChatMessages = async (chatId: string) => {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return data as ChatMessage[] || [];
   } catch (error: any) {
     toast({
       title: 'Error fetching messages',
@@ -83,18 +90,25 @@ export const getChatMessages = async (chatId: string) => {
 
 export const sendMessage = async (chatId: string, content: string, role: 'user' | 'assistant') => {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
     const { data, error } = await supabase
       .from('messages')
       .insert([{
         chat_id: chatId,
         content,
-        role
+        role,
+        user_id: user.id
       }])
       .select()
       .single();
 
     if (error) throw error;
-    return data;
+    return data as ChatMessage;
   } catch (error: any) {
     toast({
       title: 'Error sending message',
