@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatMessage from './ChatMessage';
@@ -39,8 +38,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
     const fetchMessages = async () => {
       if (chatId) {
         const chatMessages = await getChatMessages(chatId);
-        // Type assertion to ensure the roles match our expected type
-        setMessages(chatMessages as ChatMessageType[]);
+        setMessages(chatMessages);
       }
     };
     
@@ -94,8 +92,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
     // Add user message
     try {
       const newMessage = await sendMessage(currentChatId!, content, 'user');
-      // Add the message to the state with type assertion
-      setMessages(prev => [...prev, newMessage as ChatMessageType]);
+      setMessages(prev => [...prev, newMessage]);
       
       // Show thinking indicator
       setIsThinking(true);
@@ -126,8 +123,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
         'assistant'
       );
       
-      // Add the AI message to the state with type assertion
-      setMessages(prev => [...prev, aiMessage as ChatMessageType]);
+      setMessages(prev => [...prev, aiMessage]);
       
     } catch (error: any) {
       setIsThinking(false);
