@@ -215,8 +215,20 @@ export const saveMessage = async (
       
     if (error) throw error;
     
-    // In a production app, we would generate and store embeddings here
-    // This would require an edge function to call an embedding API
+    // Generate and store embedding for the message
+    if (data) {
+      try {
+        await supabase.functions.invoke('generateEmbedding', {
+          body: { 
+            text: content,
+            messageId: data.id
+          }
+        });
+      } catch (embeddingError) {
+        console.error('Error generating embedding:', embeddingError);
+        // Continue even if embedding fails
+      }
+    }
     
     return data as MemoryMessage;
   } catch (error: any) {
@@ -422,17 +434,53 @@ export const retrieveMemoryContext = async (
   // Get user profile
   const profile = await getUserProfile(userId);
   
-  // In a more complete implementation:
-  // 1. We would generate embeddings for the query
-  // 2. Use vector search to find relevant messages
-  // 3. Extract entities from the query
-  // 4. Find relevant entities in the database
-  
-  // For now, we'll just return user and profile information
+  // Initialize memory context with basic data
   const context: MemoryContext = {
     user,
     profile
   };
+  
+  // If query is provided, try to find relevant messages and entities
+  if (query && query.trim() !== '') {
+    try {
+      // Get embedding for the query
+      const embeddingResponse = await supabase.functions.invoke('generateEmbedding', {
+        body: { text: query }
+      });
+      
+      if (embeddingResponse.data && embeddingResponse.data.embedding) {
+        // Use the embedding to find similar messages
+        const { data: similarMessages, error: searchError } = await supabase.rpc(
+          'match_memory_messages',
+          {
+            query_embedding: embeddingResponse.data.embedding,
+            similarity_threshold: 0.7,
+            match_count: 5,
+            user_id: userId
+          }
+        );
+        
+        if (!searchError && similarMessages && similarMessages.length > 0) {
+          context.recentMessages = similarMessages;
+        }
+        
+        // For demonstration - get some relevant entities
+        // In a real implementation, this could be more sophisticated
+        const { data: entities, error: entitiesError } = await supabase
+          .from('entities')
+          .select('*')
+          .eq('user_id', userId)
+          .limit(3);
+          
+        if (!entitiesError && entities && entities.length > 0) {
+          context.relevantEntities = entities;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching memory context:', error);
+      // Continue with what we have even if search fails
+    }
+  }
   
   return context;
 };
