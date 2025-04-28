@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -25,12 +26,19 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					DEFAULT: '#1F3A13',
+					foreground: '#F9F9EF'
 				},
 				secondary: {
-					DEFAULT: 'hsl(var(--secondary))',
-					foreground: 'hsl(var(--secondary-foreground))'
+					DEFAULT: '#F9F9EF',
+					foreground: '#1F3A13'
+				},
+				arina: {
+					green: '#1F3A13',
+					cream: '#F9F9EF',
+					light: '#E8F5E9',
+					medium: '#81C784',
+					dark: '#2E7D32',
 				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
@@ -53,14 +61,14 @@ export default {
 					foreground: 'hsl(var(--card-foreground))'
 				},
 				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
+					DEFAULT: '#1F3A13',
+					foreground: '#F9F9EF',
+					primary: '#1F3A13',
+					'primary-foreground': '#F9F9EF',
+					accent: '#2C5320',
+					'accent-foreground': '#F9F9EF',
+					border: '#2C5320',
+					ring: '#81C784'
 				}
 			},
 			borderRadius: {
@@ -84,11 +92,16 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-ellipsis': {
+					'0%, 100%': { opacity: '0.2' },
+					'50%': { opacity: '0.8' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-ellipsis': 'pulse-ellipsis 1.5s infinite'
 			}
 		}
 	},
