@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { User } from '@supabase/supabase-js';
 
 export interface ChatMessage {
   id?: string;
@@ -76,12 +77,7 @@ export const getChatMessages = async (chatId: string) => {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    // Ensure role is correctly typed as 'user' | 'assistant'
-    const typedMessages = data.map(msg => ({
-      ...msg,
-      role: msg.role as 'user' | 'assistant'
-    }));
-    return typedMessages as ChatMessage[] || [];
+    return data as ChatMessage[] || [];
   } catch (error: any) {
     toast({
       title: 'Error fetching messages',
@@ -112,8 +108,7 @@ export const sendMessage = async (chatId: string, content: string, role: 'user' 
       .single();
 
     if (error) throw error;
-    // Ensure role is correctly typed
-    return { ...data, role: data.role as 'user' | 'assistant' } as ChatMessage;
+    return data as ChatMessage;
   } catch (error: any) {
     toast({
       title: 'Error sending message',
