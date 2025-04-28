@@ -16,12 +16,6 @@ const ALLOWED_TOPICS = [
   'agricultural economics', 'agricultural technology', 'agricultural policy'
 ];
 
-// Agricultural context to guide the AI
-const AGRICULTURAL_CONTEXT = `You are Arina, an AI assistant specialized in agricultural topics. 
-You provide helpful information about farming, crops, livestock, irrigation, agricultural business, 
-and other farming-related topics. You MUST ONLY answer questions related to agriculture and farming.
-If a user asks about an unrelated topic, politely redirect them to agricultural topics.`;
-
 // Check if a message is related to agricultural topics
 function isAgricultureRelated(message: string): boolean {
   const lowerMessage = message.toLowerCase();
@@ -32,6 +26,36 @@ function isAgricultureRelated(message: string): boolean {
      'cultivation', 'seasonal commodity', 'annual commodity', 'business model',
      'swot analysis'].some(term => lowerMessage.includes(term));
 }
+
+// Get feature-specific task description
+function getTaskDescription(selectedFeature: string | null): string {
+  switch (selectedFeature) {
+    case 'business-feasibility':
+      return 'Your ONLY task is feasibility analysis. STRICTLY focus on market conditions, competition, and success factors relevant to the user\'s query. ABSOLUTELY IGNORE anything unrelated to feasibility. If the query is off-topic, explicitly state: "I can only discuss business feasibility analysis."';
+    case 'forecasting':
+      return 'Your ONLY task is business forecasting. STRICTLY focus on sales projections, market trends, and future developments relevant to the user\'s query. ABSOLUTELY IGNORE anything unrelated to forecasting. If the query is off-topic, explicitly state: "I can only discuss business forecasting."';
+    case 'max-min-analysis':
+      return 'Your ONLY task is business optimization. STRICTLY focus on efficiency, profit maximization, and cost minimization strategies relevant to the user\'s query. ABSOLUTELY IGNORE anything unrelated to optimization. If the query is off-topic, explicitly state: "I can only discuss business optimization strategies."';
+    case 'cultivation':
+      return 'Your ONLY task is agricultural business insights. STRICTLY focus on optimal growing conditions, market timing, and cultivation strategies relevant to the user\'s query. ABSOLUTELY IGNORE anything unrelated to agricultural cultivation. If the query is off-topic, explicitly state: "I can only discuss agricultural business insights."';
+    case 'seasonal-commodity':
+      return 'Your ONLY task is seasonal commodity analysis. STRICTLY focus on price fluctuations, market patterns, and seasonal trends relevant to the user\'s query. ABSOLUTELY IGNORE anything unrelated to seasonal commodities. If the query is off-topic, explicitly state: "I can only discuss seasonal commodity analysis."';
+    case 'annual-commodity':
+      return 'Your ONLY task is annual commodity analysis. STRICTLY focus on long-term price projections, market cycles, and annual trends relevant to the user\'s query. ABSOLUTELY IGNORE anything unrelated to annual commodities. If the query is off-topic, explicitly state: "I can only discuss annual commodity analysis."';
+    case 'business-model-canvas':
+      return 'Your ONLY task is Business Model Canvas assistance. STRICTLY focus on the nine building blocks (partners, activities, resources, value propositions, customer relationships, channels, segments, cost, revenue) relevant to the user\'s query. ABSOLUTELY IGNORE anything unrelated to the Business Model Canvas. If the query is off-topic, explicitly state: "I can only assist with the Business Model Canvas."';
+    case 'swot-analysis':
+      return 'Your ONLY task is SWOT analysis. STRICTLY focus on strengths, weaknesses, opportunities, and threats relevant to the user\'s business query. ABSOLUTELY IGNORE anything unrelated to SWOT. If the query is off-topic, explicitly state: "I can only perform SWOT analysis."';
+    default:
+      return 'You are an agricultural business assistant. Provide concise, general agricultural business advice based on the query. Do not perform detailed analysis like SWOT or Feasibility. If asked for specific analysis, state: "For detailed analysis like [Specific Analysis], please select the corresponding feature." Avoid discussing non-agricultural topics.';
+  }
+}
+
+// Base agricultural context that all responses must adhere to
+const BASE_AGRICULTURAL_CONTEXT = 'You are Arina, an AI assistant specialized in agricultural topics. ' +
+  'You provide helpful information about farming, crops, livestock, irrigation, agricultural business, ' +
+  'and other farming-related topics. You MUST ONLY answer questions related to agriculture and farming. ' +
+  'If a user asks about an unrelated topic, politely redirect them to agricultural topics.';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -67,13 +91,9 @@ serve(async (req) => {
     // Build the conversation history for Gemini
     const geminiMessages = [];
     
-    // Add the system message with agricultural context
-    let systemPrompt = AGRICULTURAL_CONTEXT;
-    
-    // Add feature-specific context if a feature is selected
-    if (selectedFeature) {
-      systemPrompt += `\n\nThe user is currently interested in ${selectedFeature}. Focus your response on this specific agricultural topic.`;
-    }
+    // Add the system message with agricultural context + feature-specific task
+    const taskDescription = getTaskDescription(selectedFeature);
+    const systemPrompt = `${BASE_AGRICULTURAL_CONTEXT}\n\n${taskDescription}`;
     
     // Add system prompt
     geminiMessages.push({
