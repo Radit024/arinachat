@@ -14,11 +14,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ sender, content, timestamp })
   const isArina = sender === 'assistant';
   
   return (
-    <div className={`mb-6 ${isArina ? '' : 'flex-row-reverse'}`}>
+    <div className="mb-6">
       <div className="flex items-start gap-4">
         {/* Avatar */}
         <div className="flex-shrink-0 mt-1">
-          <Avatar className={`w-8 h-8 ${isArina ? 'bg-arina-green' : 'bg-arina-medium'}`}>
+          <Avatar className={`w-8 h-8 ${isArina ? 'bg-arina-green' : 'bg-gray-500'}`}>
             <span className="text-white font-semibold">
               {isArina ? 'A' : 'U'}
             </span>
@@ -32,29 +32,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ sender, content, timestamp })
             <span className="text-xs text-gray-500 ml-2">{timestamp}</span>
           </div>
           
-          <div className={`p-4 rounded-lg ${
-            isArina ? 'bg-white' : 'bg-arina-light text-primary'
-          }`}>
+          <div className="text-gray-800">
             <p className="whitespace-pre-wrap">{content}</p>
           </div>
           
-          {/* Message actions */}
-          <div className="flex items-center gap-2 pt-1">
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
-              <Copy size={14} className="mr-1" /> Copy
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
-              <ThumbsUp size={14} />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
-              <ThumbsDown size={14} />
-            </Button>
-          </div>
-          
-          {/* Disclaimer for AI responses */}
+          {/* Message actions - only show for AI responses */}
           {isArina && (
-            <div className="text-xs text-gray-500 italic mt-1">
-              Arina can make mistakes. Please double-check responses.
+            <div className="flex items-center gap-2 pt-1">
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
+                <Copy size={14} className="mr-1" /> Copy
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
+                <ThumbsUp size={14} />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
+                <ThumbsDown size={14} />
+              </Button>
             </div>
           )}
         </div>

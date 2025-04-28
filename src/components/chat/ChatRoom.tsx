@@ -11,15 +11,16 @@ interface ChatRoomProps {
 }
 
 const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
-  const [messages, setMessages] = useState<ChatMessageProps[]>([
-    {
-      sender: 'assistant',
-      content: "Hello! I'm Arina, your agricultural business analytics assistant. How can I help you today?",
-      timestamp: new Date().toLocaleTimeString()
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessageProps[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  // Initialize with empty messages to show welcome screen
+  useEffect(() => {
+    if (messages.length === 0 && !selectedFeature) {
+      // Don't add any initial messages to show the welcome screen
+    }
+  }, []);
   
   // Simulate response when selecting a feature
   useEffect(() => {
@@ -86,20 +87,30 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
   };
   
   return (
-    <div className="flex flex-col h-full">
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="max-w-3xl mx-auto">
-          {messages.map((message, index) => (
-            <ChatMessage
-              key={index}
-              sender={message.sender}
-              content={message.content}
-              timestamp={message.timestamp}
-            />
-          ))}
-          {isThinking && <ThinkingIndicator />}
+    <div className="flex flex-col h-full bg-white">
+      {messages.length === 0 ? (
+        // Welcome screen when no messages exist
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
+          <h1 className="text-3xl font-semibold mb-8 text-center">
+            What can I help with?
+          </h1>
         </div>
-      </ScrollArea>
+      ) : (
+        // Chat messages when conversation has started
+        <ScrollArea className="flex-1 px-4 md:px-20 py-4" ref={scrollAreaRef}>
+          <div className="max-w-3xl mx-auto">
+            {messages.map((message, index) => (
+              <ChatMessage
+                key={index}
+                sender={message.sender}
+                content={message.content}
+                timestamp={message.timestamp}
+              />
+            ))}
+            {isThinking && <ThinkingIndicator />}
+          </div>
+        </ScrollArea>
+      )}
       <ChatInput onSendMessage={handleSendMessage} />
     </div>
   );

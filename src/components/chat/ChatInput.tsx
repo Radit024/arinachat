@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Send, Paperclip, FileText } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Send, Plus, Search, Mic } from 'lucide-react';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -20,45 +20,68 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
   };
   
   return (
-    <div className="border-t border-border bg-secondary p-4">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <div className="relative">
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Reply to Arina..."
-            className="min-h-[80px] resize-none pr-12 bg-white"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
-          <Button 
-            type="submit"
-            size="sm"
-            className="absolute bottom-2 right-2"
-            disabled={!message.trim()}
-          >
-            <Send size={18} />
-          </Button>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" size="sm">
-              <Paperclip size={16} className="mr-1" /> Attach
+    <div className="border-t border-gray-200 bg-white p-4">
+      <div className="max-w-3xl mx-auto">
+        <form onSubmit={handleSubmit} className="relative">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="rounded-full"
+              aria-label="Add attachment"
+            >
+              <Plus size={18} />
             </Button>
-            <Button type="button" variant="ghost" size="sm">
-              <FileText size={16} className="mr-1" /> Format
-            </Button>
+            
+            <div className="relative flex-1 bg-gray-100 rounded-2xl">
+              <Input
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Ask anything"
+                className="bg-transparent border-none shadow-none py-6 pl-4 pr-20 focus-visible:ring-0 focus-visible:ring-offset-0"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+              />
+              
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full"
+                  aria-label="Search"
+                >
+                  <Search size={16} />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full"
+                  aria-label="Voice input"
+                >
+                  <Mic size={16} />
+                </Button>
+                <Button
+                  type="submit"
+                  size="icon"
+                  variant="ghost"
+                  disabled={!message.trim()}
+                  className="h-8 w-8 rounded-full"
+                  aria-label="Send message"
+                >
+                  <Send size={16} className={message.trim() ? "text-arina-green" : "text-gray-400"} />
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="text-xs text-gray-500">
-            Use Shift+Enter for new line
-          </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };
