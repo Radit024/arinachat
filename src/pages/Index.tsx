@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header';
 import ChatRoom from '@/components/chat/ChatRoom';
 
 const Index = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
   
   const toggleSidebar = () => {

@@ -14,7 +14,6 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden"
           onClick={toggleSidebar}
         >
           <Menu size={20} />
