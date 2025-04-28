@@ -11,6 +11,7 @@ import { getChatMessages, sendMessage, ChatMessage as ChatMessageType } from '@/
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface ChatRoomProps {
   selectedFeature: string | null;
@@ -23,6 +24,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [isNewChat, setIsNewChat] = useState(false);
+  const [isOffTopic, setIsOffTopic] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -37,7 +39,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
     const fetchMessages = async () => {
       if (chatId) {
         const chatMessages = await getChatMessages(chatId);
-        setMessages(chatMessages);
+        // Type assertion to ensure the roles match our expected type
+        setMessages(chatMessages as ChatMessageType[]);
       }
     };
     
@@ -56,6 +59,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
   
   const handleSendMessage = async (content: string) => {
     if (!user) return;
+    
+    // Reset off-topic flag
+    setIsOffTopic(false);
     
     let currentChatId = chatId;
     
@@ -88,20 +94,29 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
     // Add user message
     try {
       const newMessage = await sendMessage(currentChatId!, content, 'user');
-      setMessages(prev => [...prev, newMessage]);
+      // Add the message to the state with type assertion
+      setMessages(prev => [...prev, newMessage as ChatMessageType]);
       
       // Show thinking indicator
       setIsThinking(true);
       
-      // Call the AI edge function
+      // Call the AI edge function with the selected feature
       const response = await supabase.functions.invoke('chatWithAI', {
-        body: { messages: [...messages, newMessage] }
+        body: { 
+          messages: [...messages, newMessage],
+          selectedFeature: selectedFeature 
+        }
       });
       
       setIsThinking(false);
       
       if (response.error) {
         throw new Error(response.error.message);
+      }
+      
+      // Check if the response indicates an off-topic message
+      if (response.data.response.includes("I'm specialized in agricultural topics")) {
+        setIsOffTopic(true);
       }
       
       // Save AI response to the database
@@ -111,7 +126,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
         'assistant'
       );
       
-      setMessages(prev => [...prev, aiMessage]);
+      // Add the AI message to the state with type assertion
+      setMessages(prev => [...prev, aiMessage as ChatMessageType]);
       
     } catch (error: any) {
       setIsThinking(false);
@@ -189,6 +205,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
           </div>
           <ScrollArea className="flex-1 px-4 md:px-20 py-4" ref={scrollAreaRef}>
             <div className="max-w-3xl mx-auto">
+              {isOffTopic && (
+                <Alert className="mb-4 bg-amber-50 border-amber-200">
+                  <AlertTitle>Off-topic question detected</AlertTitle>
+                  <AlertDescription>
+                    Arina is specialized in agricultural topics. Please ask about farming, crops, agricultural business, or other farming-related topics.
+                  </AlertDescription>
+                </Alert>
+              )}
               {messages.map((message) => (
                 <ChatMessage
                   key={message.id}
