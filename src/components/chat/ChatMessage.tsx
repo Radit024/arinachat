@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Avatar } from '@/components/ui/avatar';
-import { Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Copy, ThumbsUp, ThumbsDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
 
 export interface ChatMessageProps {
   sender: 'user' | 'assistant';
@@ -12,6 +13,29 @@ export interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ sender, content, timestamp }) => {
   const isArina = sender === 'assistant';
+  const [copied, setCopied] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [disliked, setDisliked] = useState(false);
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    toast({ title: "Copied to clipboard!" });
+    
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  };
+  
+  const handleLike = () => {
+    setLiked(!liked);
+    setDisliked(false);
+  };
+  
+  const handleDislike = () => {
+    setDisliked(!disliked);
+    setLiked(false);
+  };
   
   return (
     <div className="mb-6">
@@ -39,13 +63,29 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ sender, content, timestamp })
           {/* Message actions - only show for AI responses */}
           {isArina && (
             <div className="flex items-center gap-2 pt-1">
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
-                <Copy size={14} className="mr-1" /> Copy
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 px-2 text-gray-500 hover:text-gray-700"
+                onClick={handleCopy}
+              >
+                {copied ? <Check size={14} className="mr-1 text-green-500" /> : <Copy size={14} className="mr-1" />}
+                {copied ? "Copied" : "Copy"}
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`h-8 px-2 ${liked ? 'text-green-500' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={handleLike}
+              >
                 <ThumbsUp size={14} />
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500 hover:text-gray-700">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`h-8 px-2 ${disliked ? 'text-red-500' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={handleDislike}
+              >
                 <ThumbsDown size={14} />
               </Button>
             </div>

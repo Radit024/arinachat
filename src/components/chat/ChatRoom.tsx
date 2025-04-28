@@ -1,43 +1,48 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import ChatMessage, { ChatMessageProps } from './ChatMessage';
+import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import ThinkingIndicator from './ThinkingIndicator';
-import { analysisFeatures } from '@/data/analysisFeatures';
+import { useAuth } from '@/contexts/AuthContext';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { getChatMessages, sendMessage, ChatMessage as ChatMessageType } from '@/services/chatService';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 
 interface ChatRoomProps {
   selectedFeature: string | null;
 }
 
 const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
-  const [messages, setMessages] = useState<ChatMessageProps[]>([]);
+  const { user } = useAuth();
+  const { chatId } = useParams();
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [isNewChat, setIsNewChat] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
-  // Initialize with empty messages to show welcome screen
   useEffect(() => {
-    if (messages.length === 0 && !selectedFeature) {
-      // Don't add any initial messages to show the welcome screen
+    if (!chatId) {
+      setIsNewChat(true);
+      setMessages([]);
+      return;
     }
-  }, []);
-  
-  // Simulate response when selecting a feature
-  useEffect(() => {
-    if (selectedFeature) {
-      const feature = analysisFeatures.find(f => f.id === selectedFeature);
-      if (feature) {
-        setMessages(prev => [
-          ...prev,
-          {
-            sender: 'assistant',
-            content: feature.prompt,
-            timestamp: new Date().toLocaleTimeString()
-          }
-        ]);
+    
+    setIsNewChat(false);
+    
+    const fetchMessages = async () => {
+      if (chatId) {
+        const chatMessages = await getChatMessages(chatId);
+        setMessages(chatMessages);
       }
-    }
-  }, [selectedFeature]);
+    };
+    
+    fetchMessages();
+  }, [chatId]);
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -49,67 +54,153 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
     }
   }, [messages]);
   
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
+    if (!user) return;
+    
+    let currentChatId = chatId;
+    
+    if (isNewChat) {
+      try {
+        // Create a new chat
+        const newChatTitle = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+        const { data: newChat, error } = await supabase
+          .from('chats')
+          .insert([{ 
+            title: newChatTitle,
+            user_id: user.id
+          }])
+          .select();
+          
+        if (error) throw error;
+        currentChatId = newChat[0].id;
+        navigate(`/chat/${currentChatId}`);
+        setIsNewChat(false);
+      } catch (error: any) {
+        toast({
+          title: 'Error creating chat',
+          description: error.message,
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+    
     // Add user message
-    const newMessage: ChatMessageProps = {
-      sender: 'user',
-      content,
-      timestamp: new Date().toLocaleTimeString()
-    };
-    setMessages(prev => [...prev, newMessage]);
-    
-    // Show thinking indicator
-    setIsThinking(true);
-    
-    // Simulate AI response after delay
-    setTimeout(() => {
+    try {
+      const newMessage = await sendMessage(currentChatId!, content, 'user');
+      setMessages(prev => [...prev, newMessage]);
+      
+      // Show thinking indicator
+      setIsThinking(true);
+      
+      // Call the AI edge function
+      const response = await supabase.functions.invoke('chatWithAI', {
+        body: { messages: [...messages, newMessage] }
+      });
+      
       setIsThinking(false);
-      const aiResponse: ChatMessageProps = {
-        sender: 'assistant',
-        content: getAIResponse(content),
-        timestamp: new Date().toLocaleTimeString()
-      };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 2000);
+      
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+      
+      // Save AI response to the database
+      const aiMessage = await sendMessage(
+        currentChatId!, 
+        response.data.response, 
+        'assistant'
+      );
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+    } catch (error: any) {
+      setIsThinking(false);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to get AI response',
+        variant: 'destructive'
+      });
+    }
   };
   
-  // Basic response generator (placeholder)
-  const getAIResponse = (message: string): string => {
-    if (message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi')) {
-      return "Hello! How can I help you with your agricultural business analysis today?";
-    } else if (message.toLowerCase().includes('help')) {
-      return "I can help you with various agricultural business analytics. You can select one of the analysis features from the sidebar, or ask me specific questions about your agricultural business.";
-    } else if (message.toLowerCase().includes('thank')) {
-      return "You're welcome! Is there anything else you'd like to know about agricultural business analytics?";
-    } else {
-      return "Thank you for your input. I'll need more information to provide a comprehensive analysis. Could you please provide more details about your agricultural business, such as the type of crops, location, scale of operation, and your specific goals?";
-    }
+  const handleNewChat = () => {
+    navigate('/chat');
   };
   
   return (
     <div className="flex flex-col h-full bg-white">
-      {messages.length === 0 ? (
+      {messages.length === 0 && isNewChat ? (
         // Welcome screen when no messages exist
         <div className="flex-1 flex flex-col items-center justify-center p-4">
           <h1 className="text-3xl font-semibold mb-8 text-center">
-            What can I help with?
+            How can Arina help you today?
           </h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl w-full">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-start text-left"
+              onClick={() => handleSendMessage("Analyze crop yield factors")}
+            >
+              <span className="font-medium mb-2">Analyze crop yield factors</span>
+              <span className="text-sm text-gray-500">Get insights on what affects your crop yield</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-start text-left"
+              onClick={() => handleSendMessage("Create a business forecast")}
+            >
+              <span className="font-medium mb-2">Create a business forecast</span>
+              <span className="text-sm text-gray-500">Project your agricultural business growth</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-start text-left"
+              onClick={() => handleSendMessage("Calculate ROI for new equipment")}
+            >
+              <span className="font-medium mb-2">Calculate ROI for new equipment</span>
+              <span className="text-sm text-gray-500">Understand the return on your investments</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-start text-left"
+              onClick={() => handleSendMessage("Compare crop performance")}
+            >
+              <span className="font-medium mb-2">Compare crop performance</span>
+              <span className="text-sm text-gray-500">See which crops perform best in your conditions</span>
+            </Button>
+          </div>
         </div>
       ) : (
         // Chat messages when conversation has started
-        <ScrollArea className="flex-1 px-4 md:px-20 py-4" ref={scrollAreaRef}>
-          <div className="max-w-3xl mx-auto">
-            {messages.map((message, index) => (
-              <ChatMessage
-                key={index}
-                sender={message.sender}
-                content={message.content}
-                timestamp={message.timestamp}
-              />
-            ))}
-            {isThinking && <ThinkingIndicator />}
+        <>
+          <div className="border-b p-2 flex items-center justify-between">
+            <h2 className="font-medium text-lg px-4">
+              {isNewChat ? 'New Chat' : 'Chat'}
+            </h2>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="flex items-center gap-1"
+              onClick={handleNewChat}
+            >
+              <Plus size={16} />
+              New Chat
+            </Button>
           </div>
-        </ScrollArea>
+          <ScrollArea className="flex-1 px-4 md:px-20 py-4" ref={scrollAreaRef}>
+            <div className="max-w-3xl mx-auto">
+              {messages.map((message) => (
+                <ChatMessage
+                  key={message.id}
+                  sender={message.role}
+                  content={message.content}
+                  timestamp={new Date(message.created_at!).toLocaleTimeString()}
+                />
+              ))}
+              {isThinking && <ThinkingIndicator />}
+            </div>
+          </ScrollArea>
+        </>
       )}
       <ChatInput onSendMessage={handleSendMessage} />
     </div>

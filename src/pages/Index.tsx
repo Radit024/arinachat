@@ -1,16 +1,40 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import ChatRoom from '@/components/chat/ChatRoom';
+import { useParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
+  const { chatId } = useParams();
   
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+  
+  // Set up real-time subscription for messages
+  useEffect(() => {
+    if (!chatId) return;
+    
+    const channel = supabase
+      .channel(`messages:${chatId}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `chat_id=eq.${chatId}`
+      }, (payload) => {
+        console.log('New message:', payload.new);
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [chatId]);
   
   return (
     <div className="flex h-screen bg-secondary">
