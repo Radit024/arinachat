@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Menu, MessageSquare, User } from 'lucide-react';
+import { Plus, MessageSquare, User } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { analysisFeatures } from '@/data/analysisFeatures';
@@ -9,16 +9,20 @@ import { analysisFeatures } from '@/data/analysisFeatures';
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  selectedFeature: string | null;
+  setSelectedFeature: (feature: string | null) => void;
 }
 
-const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
-  const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
-  
+const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: SidebarProps) => {
   const recentChats = [
     { id: 1, title: "Rice Cultivation Analysis", date: "2 days ago" },
     { id: 2, title: "Corn Market Forecast", date: "1 week ago" },
     { id: 3, title: "Coffee Bean SWOT Analysis", date: "2 weeks ago" }
   ];
+
+  const handleFeatureSelect = (featureId: string) => {
+    setSelectedFeature(featureId);
+  };
 
   return (
     <aside 
@@ -48,7 +52,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
               className={`w-full justify-start text-left text-arina-cream hover:bg-arina-dark ${
                 selectedFeature === feature.id ? 'bg-arina-dark' : ''
               }`}
-              onClick={() => setSelectedFeature(feature.id)}
+              onClick={() => handleFeatureSelect(feature.id)}
             >
               {feature.name}
             </Button>

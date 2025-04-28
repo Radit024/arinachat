@@ -5,9 +5,10 @@ import { ChevronDown, Share2, Menu } from 'lucide-react';
 
 interface HeaderProps {
   toggleSidebar: () => void;
+  isSidebarOpen: boolean;
 }
 
-const Header = ({ toggleSidebar }: HeaderProps) => {
+const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
   return (
     <header className="flex items-center justify-between p-4 border-b border-border bg-secondary">
       <div className="flex items-center gap-2">
@@ -15,6 +16,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
+          aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
           <Menu size={20} />
         </Button>
