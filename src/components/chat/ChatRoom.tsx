@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatMessage from './ChatMessage';
@@ -111,8 +112,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
         throw new Error(response.error.message);
       }
       
-      // Check if the response indicates an off-topic message
-      if (response.data.response.includes("I'm specialized in agricultural topics")) {
+      // Check if the response indicates an off-topic message based on the selected feature
+      if (response.data.response.includes("I can only discuss") || 
+          response.data.response.includes("I can only assist with") || 
+          response.data.response.includes("I can only perform") ||
+          response.data.response.includes("I'm specialized in business topics")) {
         setIsOffTopic(true);
       }
       
@@ -151,34 +155,34 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-start text-left"
-              onClick={() => handleSendMessage("Analyze crop yield factors")}
+              onClick={() => handleSendMessage("Analyze market feasibility for a new product")}
             >
-              <span className="font-medium mb-2">Analyze crop yield factors</span>
-              <span className="text-sm text-gray-500">Get insights on what affects your crop yield</span>
+              <span className="font-medium mb-2">Market feasibility analysis</span>
+              <span className="text-sm text-gray-500">Evaluate your new business idea's potential</span>
             </Button>
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-start text-left"
-              onClick={() => handleSendMessage("Create a business forecast")}
+              onClick={() => handleSendMessage("Create a business forecast for next quarter")}
             >
               <span className="font-medium mb-2">Create a business forecast</span>
-              <span className="text-sm text-gray-500">Project your agricultural business growth</span>
+              <span className="text-sm text-gray-500">Project your business growth trends</span>
             </Button>
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-start text-left"
-              onClick={() => handleSendMessage("Calculate ROI for new equipment")}
+              onClick={() => handleSendMessage("Analyze ROI for new equipment investment")}
             >
-              <span className="font-medium mb-2">Calculate ROI for new equipment</span>
+              <span className="font-medium mb-2">Calculate ROI for investments</span>
               <span className="text-sm text-gray-500">Understand the return on your investments</span>
             </Button>
             <Button 
               variant="outline" 
               className="h-auto p-4 flex flex-col items-start text-left"
-              onClick={() => handleSendMessage("Compare crop performance")}
+              onClick={() => handleSendMessage("Create SWOT analysis for my business")}
             >
-              <span className="font-medium mb-2">Compare crop performance</span>
-              <span className="text-sm text-gray-500">See which crops perform best in your conditions</span>
+              <span className="font-medium mb-2">Create a SWOT analysis</span>
+              <span className="text-sm text-gray-500">Identify strengths, weaknesses, opportunities, threats</span>
             </Button>
           </div>
         </div>
@@ -203,9 +207,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ selectedFeature }) => {
             <div className="max-w-3xl mx-auto">
               {isOffTopic && (
                 <Alert className="mb-4 bg-amber-50 border-amber-200">
-                  <AlertTitle>Off-topic question detected</AlertTitle>
+                  <AlertTitle>Topic-specific mode active</AlertTitle>
                   <AlertDescription>
-                    Arina is specialized in agricultural topics. Please ask about farming, crops, agricultural business, or other farming-related topics.
+                    Arina is currently in a specialized mode. Please ask questions relevant to the selected analysis feature.
                   </AlertDescription>
                 </Alert>
               )}

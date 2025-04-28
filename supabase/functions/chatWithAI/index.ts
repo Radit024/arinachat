@@ -7,23 +7,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Agricultural topics that the AI is allowed to discuss
+// Business topics that the AI is allowed to discuss
 const ALLOWED_TOPICS = [
-  'agriculture', 'farming', 'crops', 'livestock', 'irrigation', 
-  'fertilizer', 'pesticides', 'soil', 'harvest', 'planting',
-  'yield', 'farm equipment', 'weather', 'climate', 'sustainability',
-  'organic farming', 'agribusiness', 'food production', 'crop rotation',
-  'agricultural economics', 'agricultural technology', 'agricultural policy'
+  'business', 'market', 'finance', 'investment', 'profit', 
+  'revenue', 'cost', 'strategy', 'planning', 'management',
+  'marketing', 'sales', 'customer', 'product', 'service',
+  'analysis', 'projections', 'forecast', 'feasibility', 'swot',
+  'optimization', 'efficiency', 'sustainability', 'growth', 
+  'competition', 'economics', 'industry', 'trends', 'development'
 ];
 
-// Check if a message is related to agricultural topics
-function isAgricultureRelated(message: string): boolean {
+// Check if a message is related to business topics
+function isBusinessRelated(message: string): boolean {
   const lowerMessage = message.toLowerCase();
-  // Simple check for any agricultural term in the message
+  // Simple check for any business term in the message
   return ALLOWED_TOPICS.some(topic => lowerMessage.includes(topic)) ||
     // Check for analysis features from our app
     ['business feasibility', 'forecasting', 'maximization', 'minimization', 
-     'cultivation', 'seasonal commodity', 'annual commodity', 'business model',
+     'optimization', 'seasonal commodity', 'annual commodity', 'business model',
      'swot analysis'].some(term => lowerMessage.includes(term));
 }
 
@@ -47,15 +48,12 @@ function getTaskDescription(selectedFeature: string | null): string {
     case 'swot-analysis':
       return 'Your ONLY task is SWOT analysis. STRICTLY focus on strengths, weaknesses, opportunities, and threats relevant to the user\'s business query. ABSOLUTELY IGNORE anything unrelated to SWOT. If the query is off-topic, explicitly state: "I can only perform SWOT analysis."';
     default:
-      return 'You are an agricultural business assistant. Provide concise, general agricultural business advice based on the query. Do not perform detailed analysis like SWOT or Feasibility. If asked for specific analysis, state: "For detailed analysis like [Specific Analysis], please select the corresponding feature." Avoid discussing non-agricultural topics.';
+      return 'You are a general business assistant. Provide concise, general business advice based on the query. Do not perform detailed analysis like SWOT or Feasibility. If asked for specific analysis, state: "For detailed analysis like [Specific Analysis], please select the corresponding feature." Avoid discussing unrelated topics.';
   }
 }
 
-// Base agricultural context that all responses must adhere to
-const BASE_AGRICULTURAL_CONTEXT = 'You are Arina, an AI assistant specialized in agricultural topics. ' +
-  'You provide helpful information about farming, crops, livestock, irrigation, agricultural business, ' +
-  'and other farming-related topics. You MUST ONLY answer questions related to agriculture and farming. ' +
-  'If a user asks about an unrelated topic, politely redirect them to agricultural topics.';
+// Base business context that all responses must adhere to
+const BASE_BUSINESS_CONTEXT = 'You are Arina, a highly specialized AI business assistant. ';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -67,11 +65,43 @@ serve(async (req) => {
     const { messages, selectedFeature } = await req.json();
     const lastMessage = messages[messages.length - 1];
     
-    // Check if the last message is related to agriculture
-    if (!isAgricultureRelated(lastMessage.content)) {
+    // Check if the last message is related to business
+    if (!isBusinessRelated(lastMessage.content)) {
+      // Create an appropriate off-topic message based on the selected feature
+      let offTopicMessage = "I'm specialized in business topics. Could you please ask me something related to business strategy, finance, marketing, or other business topics?";
+      
+      if (selectedFeature) {
+        switch(selectedFeature) {
+          case 'business-feasibility':
+            offTopicMessage = "I can only discuss business feasibility analysis.";
+            break;
+          case 'forecasting':
+            offTopicMessage = "I can only discuss business forecasting.";
+            break;
+          case 'max-min-analysis':
+            offTopicMessage = "I can only discuss business optimization strategies.";
+            break;
+          case 'cultivation':
+            offTopicMessage = "I can only discuss agricultural business insights.";
+            break;
+          case 'seasonal-commodity':
+            offTopicMessage = "I can only discuss seasonal commodity analysis.";
+            break;
+          case 'annual-commodity':
+            offTopicMessage = "I can only discuss annual commodity analysis.";
+            break;
+          case 'business-model-canvas':
+            offTopicMessage = "I can only assist with the Business Model Canvas.";
+            break;
+          case 'swot-analysis':
+            offTopicMessage = "I can only perform SWOT analysis.";
+            break;
+        }
+      }
+      
       return new Response(
         JSON.stringify({ 
-          response: "I'm specialized in agricultural topics. Could you please ask me something related to farming, crops, agricultural business, or other farming topics?" 
+          response: offTopicMessage 
         }),
         { 
           headers: { 
@@ -91,9 +121,9 @@ serve(async (req) => {
     // Build the conversation history for Gemini
     const geminiMessages = [];
     
-    // Add the system message with agricultural context + feature-specific task
+    // Add the system message with business context + feature-specific task
     const taskDescription = getTaskDescription(selectedFeature);
-    const systemPrompt = `${BASE_AGRICULTURAL_CONTEXT}\n\n${taskDescription}`;
+    const systemPrompt = `${BASE_BUSINESS_CONTEXT}${taskDescription}`;
     
     // Add system prompt
     geminiMessages.push({
