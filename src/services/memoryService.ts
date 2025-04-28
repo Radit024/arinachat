@@ -327,7 +327,12 @@ export const getUserEntities = async (
     
     const { data, error } = await query;
     if (error) throw error;
-    return data as Entity[];
+    return data.map(item => ({
+      id: item.id,
+      entity_type: item.entity_type,
+      entity_name: item.entity_name,
+      attributes: item.attributes as Record<string, any>
+    }));
   } catch (error: any) {
     console.error('Error fetching entities:', error.message);
     return [];
@@ -461,7 +466,14 @@ export const retrieveMemoryContext = async (
         );
         
         if (!searchError && similarMessages && similarMessages.length > 0) {
-          context.recentMessages = similarMessages;
+          // Map the results to ensure they match the MemoryMessage interface
+          context.recentMessages = similarMessages.map(msg => ({
+            id: msg.id,
+            conversation_id: msg.conversation_id,
+            content: msg.content,
+            role: msg.role as 'user' | 'assistant',
+            created_at: new Date().toISOString() // Default value since it's missing from the query result
+          }));
         }
         
         // For demonstration - get some relevant entities
@@ -473,7 +485,13 @@ export const retrieveMemoryContext = async (
           .limit(3);
           
         if (!entitiesError && entities && entities.length > 0) {
-          context.relevantEntities = entities;
+          // Map the entities to ensure they match the Entity interface
+          context.relevantEntities = entities.map(entity => ({
+            id: entity.id,
+            entity_type: entity.entity_type,
+            entity_name: entity.entity_name,
+            attributes: entity.attributes as Record<string, any>
+          }));
         }
       }
     } catch (error) {
