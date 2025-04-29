@@ -33,6 +33,8 @@ interface HeaderProps {
 const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+  const [isMemoryOpen, setIsMemoryOpen] = React.useState(false);
   
   // Extract first letter of email for avatar fallback
   const getInitials = () => {
@@ -43,6 +45,23 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+  
+  // Separate handlers for each dialog to prevent state conflicts
+  const handleOpenProfileDialog = () => {
+    setIsProfileOpen(true);
+  };
+  
+  const handleOpenMemoryDialog = () => {
+    setIsMemoryOpen(true);
+  };
+  
+  const handleProfileDialogChange = (open: boolean) => {
+    setIsProfileOpen(open);
+  };
+  
+  const handleMemoryDialogChange = (open: boolean) => {
+    setIsMemoryOpen(open);
   };
   
   return (
@@ -82,9 +101,10 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
           </DropdownMenuTrigger>
           
           <DropdownMenuContent align="end" className="w-56">
-            <Dialog>
+            {/* Business Profile - Uses separate dialog state */}
+            <Dialog open={isProfileOpen} onOpenChange={handleProfileDialogChange}>
               <DialogTrigger asChild>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpenProfileDialog} onSelect={(e) => e.preventDefault()}>
                   <UserCircle2 className="mr-2 h-4 w-4" />
                   <span>Business Profile</span>
                 </DropdownMenuItem>
@@ -102,9 +122,10 @@ const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
               <span>Account Dashboard</span>
             </DropdownMenuItem>
             
-            <Dialog>
+            {/* Memory Settings - Uses separate dialog state */}
+            <Dialog open={isMemoryOpen} onOpenChange={handleMemoryDialogChange}>
               <DialogTrigger asChild>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpenMemoryDialog} onSelect={(e) => e.preventDefault()}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Memory Settings</span>
                 </DropdownMenuItem>
