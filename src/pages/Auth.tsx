@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
-import { Google, Microsoft, Phone } from 'lucide-react';
+import { Github, Linkedin, Phone } from 'lucide-react';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 
@@ -125,7 +125,7 @@ const Auth = () => {
                       onClick={signInWithGoogle}
                       disabled={isSubmitting}
                     >
-                      <Google className="h-5 w-5" />
+                      <Github className="h-5 w-5" />
                       Continue with Google
                     </Button>
                     
@@ -134,7 +134,7 @@ const Auth = () => {
                       variant="outline" 
                       className="w-full h-12 font-medium border border-gray-300 flex items-center justify-center gap-2"
                     >
-                      <Microsoft className="h-5 w-5" />
+                      <Linkedin className="h-5 w-5" />
                       Continue with Microsoft Account
                     </Button>
                     
