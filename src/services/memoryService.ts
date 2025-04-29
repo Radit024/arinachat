@@ -1,581 +1,297 @@
-
+import { v4 as uuidv4 } from 'uuid';
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { TextLoader } from "langchain/document_loaders/fs/text";
+import { PDFLoader } from "langchain/document_loaders/fs/pdf";
+import { SupabaseVectorStore } from "langchain/vectorstores/supabase";
+import { createClient } from '@supabase/supabase-js';
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { ChatOpenAI } from "langchain/chat_models/openai";
+import { BufferMemory, ChatMessageHistory } from "langchain/memory";
+import { ConversationChain } from "langchain/chains";
+import { AIChatMessage, HumanChatMessage } from "langchain/schema";
+import { Document } from "langchain/document";
+import { saveEntities, getEntities } from './entityService';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
 
-export interface UserProfile {
-  id: string;
-  business_name?: string;
-  business_type?: string;
-  farm_size?: number;
-  location?: string;
-  main_crops?: string[];
+// Define types
+export interface MemoryContext {
+  userMessage: string;
+  recentMessages: {
+    role: string;
+    content: string;
+  }[];
+  relevantEntities: string[];
+  userProfile: any;
 }
 
 export interface MemoryUser {
   id: string;
-  display_name?: string;
-  email?: string;
-  last_active?: string;
-  preferences?: Record<string, any>;
+  email: string;
 }
 
-export interface Conversation {
-  id: string;
-  title: string;
-  analysis_type?: string;
-  summary?: string;
-  tags?: string[];
-  created_at: string;
+const defaultContext: MemoryContext = {
+  userMessage: '',
+  recentMessages: [],
+  relevantEntities: [],
+  userProfile: null,
+};
+
+// Initialize Supabase client
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Supabase URL and Anon Key must be provided as environment variables.');
 }
 
-export interface MemoryMessage {
-  id: string;
-  conversation_id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  created_at: string;
-}
+// Function to load documents from a directory
+export const loadDocuments = async (directory: string): Promise<Document[]> => {
+  const txtLoader = new TextLoader(`${directory}/state_of_the_union.txt`);
+  const pdfLoader = new PDFLoader(`${directory}/machinelearning-arxiv.pdf`);
 
-export interface Entity {
-  id: string;
-  entity_type: string;
-  entity_name: string;
-  attributes: Record<string, any>;
-}
+  const txtDocuments = await txtLoader.load();
+  const pdfDocuments = await pdfLoader.load();
 
-export interface SessionData {
-  id: string;
-  session_key: string;
-  session_data: Record<string, any>;
-  expires_at: string;
-}
+  return [...txtDocuments, ...pdfDocuments];
+};
 
-interface MemoryContext {
-  user?: MemoryUser;
-  profile?: UserProfile;
-  recentMessages?: MemoryMessage[];
-  relevantEntities?: Entity[];
-}
+// Function to create a vector store from documents
+export const createVectorStore = async (docs: Document[]): Promise<MemoryVectorStore> => {
+  const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 0 });
+  const splitDocs = await splitter.splitDocuments(docs);
 
-// Function to create or get the current memory user from auth user
+  const embeddings = new OpenAIEmbeddings();
+  const vectorStore = await MemoryVectorStore.fromDocuments(splitDocs, embeddings);
+
+  return vectorStore;
+};
+
+// Function to perform a similarity search in the vector store
+export const performSimilaritySearch = async (vectorStore: MemoryVectorStore, query: string, k: number = 2): Promise<Document[]> => {
+  const results = await vectorStore.similaritySearch(query, k);
+  return results;
+};
+
+// Function to initialize Supabase vector store
+export const initializeSupabaseVectorStore = async (openAIApiKey: string): Promise<SupabaseVectorStore> => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Supabase URL and Anon Key must be provided as environment variables.');
+  }
+
+  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const embeddings = new OpenAIEmbeddings({ openAIApiKey });
+
+  const vectorStore = new SupabaseVectorStore(embeddings, {
+    client,
+    tableName: "documents",
+    queryName: "match_documents",
+  });
+
+  return vectorStore;
+};
+
+// Function to load data into Supabase vector store
+export const loadDataIntoSupabase = async (directory: string, openAIApiKey: string) => {
+  try {
+    const docs = await loadDocuments(directory);
+    const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 0 });
+    const splitDocs = await splitter.splitDocuments(docs);
+
+    const vectorStore = await initializeSupabaseVectorStore(openAIApiKey);
+    await SupabaseVectorStore.fromDocuments(splitDocs, new OpenAIEmbeddings({ openAIApiKey }), {
+      client: vectorStore.client,
+      tableName: vectorStore.tableName,
+      queryName: vectorStore.queryName,
+    });
+
+    console.log('Data loaded into Supabase successfully.');
+  } catch (error) {
+    console.error('Error loading data into Supabase:', error);
+    throw error;
+  }
+};
+
+// Function to perform similarity search in Supabase vector store
+export const performSupabaseSimilaritySearch = async (
+  vectorStore: SupabaseVectorStore,
+  query: string,
+  k: number = 2
+): Promise<Document[]> => {
+  try {
+    const results = await vectorStore.similaritySearch(query, k);
+    return results;
+  } catch (error) {
+    console.error('Error performing similarity search in Supabase:', error);
+    throw error;
+  }
+};
+
+// Function to initialize the language model
+export const initializeLanguageModel = (openAIApiKey: string, temperature: number = 0.7) => {
+  const model = new ChatOpenAI({
+    openAIApiKey,
+    temperature,
+  });
+  return model;
+};
+
+// Function to initialize memory with message history
+export const initializeMemory = (modelName: string = 'Arina'): BufferMemory => {
+  const memory = new BufferMemory({
+    chatHistory: new ChatMessageHistory({
+      messages: [
+        new AIChatMessage(`You are ${modelName}, a helpful AI assistant.`),
+      ]
+    }),
+    memoryKey: "chat_history",
+    returnMessages: true,
+  });
+  return memory;
+};
+
+// Function to create a conversation chain
+export const createConversationChain = (
+  model: ChatOpenAI,
+  memory: BufferMemory,
+  prompt: any
+): ConversationChain => {
+  const chain = new ConversationChain({
+    llm: model,
+    memory: memory,
+    prompt: prompt
+  });
+  return chain;
+};
+
+// Function to generate a unique user ID
+export const generateUserId = (): string => {
+  return uuidv4();
+};
+
+// Function to initialize a memory user with Supabase
 export const initializeMemoryUser = async (): Promise<MemoryUser | null> => {
   try {
-    // Get current authenticated user
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-    
-    // Update last active timestamp
-    await supabase.rpc('update_last_active', { user_auth_id: user.id });
-    
-    // Get or create memory user
-    const { data, error } = await supabase
-      .from('memory_users')
-      .select('*')
-      .eq('auth_id', user.id)
-      .single();
-      
-    if (error) {
-      console.error('Error fetching memory user:', error);
+
+    if (user) {
+      return {
+        id: user.id,
+        email: user.email || 'default@example.com',
+      };
+    } else {
+      console.log('No user found in session.');
       return null;
     }
-    
-    return data as MemoryUser;
-  } catch (error: any) {
-    console.error('Error initializing memory user:', error.message);
+  } catch (error) {
+    console.error("Error initializing memory user:", error);
     return null;
   }
 };
 
-// Get user profile
-export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-      
-    if (error && error.code !== 'PGRST116') { // Not found error
-      throw error;
-    }
-    
-    return data as UserProfile;
-  } catch (error: any) {
-    console.error('Error fetching user profile:', error.message);
-    return null;
-  }
-};
-
-// Create or update user profile
-export const saveUserProfile = async (
-  userId: string, 
-  profileData: Partial<UserProfile>
-): Promise<UserProfile | null> => {
-  try {
-    // Check if profile exists
-    const existingProfile = await getUserProfile(userId);
-    
-    if (existingProfile) {
-      // Update existing profile
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .update(profileData)
-        .eq('user_id', userId)
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data as UserProfile;
-    } else {
-      // Create new profile
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .insert([{ 
-          user_id: userId,
-          ...profileData
-        }])
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data as UserProfile;
-    }
-  } catch (error: any) {
-    toast({
-      title: 'Error saving profile',
-      description: error.message,
-      variant: 'destructive'
-    });
-    return null;
-  }
-};
-
-// Create a new conversation
-export const createConversation = async (
+// Function to save user message and assistant response to chat history
+export const saveChatHistory = async (
+  chatId: string,
   userId: string,
-  title: string,
-  analysisType?: string
-): Promise<Conversation | null> => {
+  message: string,
+  response: string
+): Promise<void> => {
+  try {
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert([
+        { chat_id: chatId, user_id: userId, content: message, sender: 'user' },
+        { chat_id: chatId, user_id: userId, content: response, sender: 'assistant' },
+      ]);
+
+    if (messageError) {
+      console.error("Error saving messages:", messageError);
+    }
+  } catch (error) {
+    console.error("Error saving chat history:", error);
+  }
+};
+
+// Function to create a new chat
+export const createChat = async (userId: string, title: string): Promise<{ id: string } | null> => {
   try {
     const { data, error } = await supabase
-      .from('conversations')
-      .insert([{
-        user_id: userId,
-        title,
-        analysis_type: analysisType
-      }])
-      .select()
+      .from('chats')
+      .insert([{ user_id: userId, title: title }])
+      .select('id')
       .single();
-      
-    if (error) throw error;
-    return data as Conversation;
-  } catch (error: any) {
-    toast({
-      title: 'Error creating conversation',
-      description: error.message,
-      variant: 'destructive'
-    });
-    return null;
-  }
-};
 
-// Get all conversations for a user
-export const getUserConversations = async (userId: string): Promise<Conversation[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-      
-    if (error) throw error;
-    return data as Conversation[];
-  } catch (error: any) {
-    console.error('Error fetching conversations:', error.message);
-    return [];
-  }
-};
-
-// Save a message to memory
-export const saveMessage = async (
-  conversationId: string,
-  content: string,
-  role: 'user' | 'assistant'
-): Promise<MemoryMessage | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('memory_messages')
-      .insert([{
-        conversation_id: conversationId,
-        content,
-        role
-      }])
-      .select()
-      .single();
-      
-    if (error) throw error;
-    
-    // Generate and store embedding for the message
-    if (data) {
-      try {
-        await supabase.functions.invoke('generateEmbedding', {
-          body: { 
-            text: content,
-            messageId: data.id
-          }
-        });
-      } catch (embeddingError) {
-        console.error('Error generating embedding:', embeddingError);
-        // Continue even if embedding fails
-      }
-    }
-    
-    return data as MemoryMessage;
-  } catch (error: any) {
-    console.error('Error saving message:', error.message);
-    return null;
-  }
-};
-
-// Get messages for a conversation
-export const getConversationMessages = async (conversationId: string): Promise<MemoryMessage[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('memory_messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-      
-    if (error) throw error;
-    return data as MemoryMessage[];
-  } catch (error: any) {
-    console.error('Error fetching conversation messages:', error.message);
-    return [];
-  }
-};
-
-// Store an entity
-export const saveEntity = async (
-  userId: string,
-  entityType: string,
-  entityName: string,
-  attributes: Record<string, any> = {}
-): Promise<Entity | null> => {
-  try {
-    // Check if entity exists
-    const { data: existingEntities, error: fetchError } = await supabase
-      .from('entities')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('entity_type', entityType)
-      .eq('entity_name', entityName);
-      
-    if (fetchError) throw fetchError;
-    
-    if (existingEntities && existingEntities.length > 0) {
-      // Update existing entity
-      const updatedAttributes = {
-        ...existingEntities[0].attributes,
-        ...attributes
-      };
-      
-      const { data, error } = await supabase
-        .from('entities')
-        .update({ attributes: updatedAttributes })
-        .eq('id', existingEntities[0].id)
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data as Entity;
-    } else {
-      // Create new entity
-      const { data, error } = await supabase
-        .from('entities')
-        .insert([{
-          user_id: userId,
-          entity_type: entityType,
-          entity_name: entityName,
-          attributes
-        }])
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data as Entity;
-    }
-  } catch (error: any) {
-    console.error('Error saving entity:', error.message);
-    return null;
-  }
-};
-
-// Get entities by type for a user
-export const getUserEntities = async (
-  userId: string,
-  entityType?: string
-): Promise<Entity[]> => {
-  try {
-    let query = supabase
-      .from('entities')
-      .select('*')
-      .eq('user_id', userId);
-      
-    if (entityType) {
-      query = query.eq('entity_type', entityType);
-    }
-    
-    const { data, error } = await query;
-    if (error) throw error;
-    return data.map(item => ({
-      id: item.id,
-      entity_type: item.entity_type,
-      entity_name: item.entity_name,
-      attributes: item.attributes as Record<string, any>
-    }));
-  } catch (error: any) {
-    console.error('Error fetching entities:', error.message);
-    return [];
-  }
-};
-
-// Save session data
-export const saveSessionData = async (
-  userId: string,
-  sessionKey: string,
-  sessionData: Record<string, any>,
-  expiresInMinutes: number = 60
-): Promise<SessionData | null> => {
-  try {
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + expiresInMinutes);
-    
-    // Check if session exists
-    const { data: existingSession, error: fetchError } = await supabase
-      .from('user_session_data')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('session_key', sessionKey)
-      .single();
-      
-    if (fetchError && fetchError.code !== 'PGRST116') { // Not found error
-      throw fetchError;
-    }
-    
-    if (existingSession) {
-      // Update existing session
-      const { data, error } = await supabase
-        .from('user_session_data')
-        .update({
-          session_data: sessionData,
-          expires_at: expiresAt.toISOString()
-        })
-        .eq('id', existingSession.id)
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data as SessionData;
-    } else {
-      // Create new session
-      const { data, error } = await supabase
-        .from('user_session_data')
-        .insert([{
-          user_id: userId,
-          session_key: sessionKey,
-          session_data: sessionData,
-          expires_at: expiresAt.toISOString()
-        }])
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data as SessionData;
-    }
-  } catch (error: any) {
-    console.error('Error saving session data:', error.message);
-    return null;
-  }
-};
-
-// Get session data
-export const getSessionData = async (
-  userId: string,
-  sessionKey: string
-): Promise<SessionData | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('user_session_data')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('session_key', sessionKey)
-      .gt('expires_at', new Date().toISOString())
-      .single();
-      
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Not found or expired
-        return null;
-      }
-      throw error;
+      console.error("Error creating chat:", error);
+      return null;
     }
-    
-    return data as SessionData;
-  } catch (error: any) {
-    console.error('Error fetching session data:', error.message);
+
+    return data;
+  } catch (error) {
+    console.error("Error creating chat:", error);
     return null;
   }
 };
 
-// Function to retrieve memory context for the current user and query
-export const retrieveMemoryContext = async (
-  userId: string,
-  query?: string
-): Promise<MemoryContext> => {
-  // Get user info
-  const user = await initializeMemoryUser();
-  if (!user) return {};
-  
-  // Get user profile
-  const profile = await getUserProfile(userId);
-  
-  // Initialize memory context with basic data
-  const context: MemoryContext = {
-    user,
-    profile
-  };
-  
-  // If query is provided, try to find relevant messages and entities
-  if (query && query.trim() !== '') {
-    try {
-      // Get embedding for the query
-      const embeddingResponse = await supabase.functions.invoke('generateEmbedding', {
-        body: { text: query }
-      });
-      
-      if (embeddingResponse.data && embeddingResponse.data.embedding) {
-        // Use the embedding to find similar messages
-        const { data: similarMessages, error: searchError } = await supabase.rpc(
-          'match_memory_messages',
-          {
-            query_embedding: embeddingResponse.data.embedding,
-            similarity_threshold: 0.7,
-            match_count: 5,
-            user_id: userId
-          }
-        );
-        
-        if (!searchError && similarMessages && similarMessages.length > 0) {
-          // Map the results to ensure they match the MemoryMessage interface
-          context.recentMessages = similarMessages.map(msg => ({
-            id: msg.id,
-            conversation_id: msg.conversation_id,
-            content: msg.content,
-            role: msg.role as 'user' | 'assistant',
-            created_at: new Date().toISOString() // Default value since it's missing from the query result
-          }));
-        }
-        
-        // For demonstration - get some relevant entities
-        // In a real implementation, this could be more sophisticated
-        const { data: entities, error: entitiesError } = await supabase
-          .from('entities')
-          .select('*')
-          .eq('user_id', userId)
-          .limit(3);
-          
-        if (!entitiesError && entities && entities.length > 0) {
-          // Map the entities to ensure they match the Entity interface
-          context.relevantEntities = entities.map(entity => ({
-            id: entity.id,
-            entity_type: entity.entity_type,
-            entity_name: entity.entity_name,
-            attributes: entity.attributes as Record<string, any>
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching memory context:', error);
-      // Continue with what we have even if search fails
+// Function to load chat history from Supabase
+export const loadChatHistory = async (chatId: string): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('chat_id', chatId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error("Error fetching chat history:", error);
+      return [];
     }
+
+    return data || [];
+  } catch (error) {
+    console.error("Error loading chat history:", error);
+    return [];
   }
-  
-  return context;
 };
 
-// Clean up expired session data
-export const cleanupExpiredSessions = async (): Promise<void> => {
+// Function to prepare chat history for the language model
+export const prepareChatHistoryForModel = (chatHistory: any[]): (AIChatMessage | HumanChatMessage)[] => {
+  return chatHistory.map(message => {
+    if (message.sender === 'user') {
+      return new HumanChatMessage(message.content);
+    } else {
+      return new AIChatMessage(message.content);
+    }
+  });
+};
+
+// Function to update chat title
+export const updateChatTitle = async (chatId: string, title: string): Promise<boolean> => {
   try {
     const { error } = await supabase
-      .from('user_session_data')
-      .delete()
-      .lt('expires_at', new Date().toISOString());
-      
-    if (error) throw error;
-  } catch (error: any) {
-    console.error('Error cleaning up expired sessions:', error.message);
+      .from('chats')
+      .update({ title: title })
+      .eq('id', chatId);
+
+    if (error) {
+      console.error("Error updating chat title:", error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error updating chat title:", error);
+    return false;
   }
 };
 
-// Delete memory data by type
-export const deleteMemoryData = async (
-  userId: string, 
-  type: 'conversations' | 'entities' | 'sessions',
-  itemId?: string
-): Promise<boolean> => {
-  try {
-    let error;
-    
-    if (type === 'conversations') {
-      if (itemId) {
-        ({ error } = await supabase
-          .from('conversations')
-          .delete()
-          .eq('id', itemId)
-          .eq('user_id', userId));
-      } else {
-        ({ error } = await supabase
-          .from('conversations')
-          .delete()
-          .eq('user_id', userId));
-      }
-    } else if (type === 'entities') {
-      if (itemId) {
-        ({ error } = await supabase
-          .from('entities')
-          .delete()
-          .eq('id', itemId)
-          .eq('user_id', userId));
-      } else {
-        ({ error } = await supabase
-          .from('entities')
-          .delete()
-          .eq('user_id', userId));
-      }
-    } else if (type === 'sessions') {
-      if (itemId) {
-        ({ error } = await supabase
-          .from('user_session_data')
-          .delete()
-          .eq('id', itemId)
-          .eq('user_id', userId));
-      } else {
-        ({ error } = await supabase
-          .from('user_session_data')
-          .delete()
-          .eq('user_id', userId));
-      }
-    }
-    
-    if (error) throw error;
-    return true;
-  } catch (error: any) {
-    console.error(`Error deleting ${type}:`, error.message);
-    toast({
-      title: `Error deleting ${type}`,
-      description: error.message,
-      variant: 'destructive'
-    });
-    return false;
-  }
+// Function to create initial memory context
+export const createInitialMemoryContext = (messageText: string): MemoryContext => {
+  return { 
+    userMessage: messageText,
+    recentMessages: [],
+    relevantEntities: [],
+    userProfile: null
+  };
 };

@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, MessageSquare, User, LogOut } from 'lucide-react';
+import { Plus, MessageSquare, LogOut } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { analysisFeatures } from '@/data/analysisFeatures';
@@ -74,16 +73,16 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
     if (chatList.length === 0) return null;
     
     return (
-      <div className="space-y-1 py-2">
-        <div className="flex items-center px-2 py-1">
-          <MessageSquare size={14} className="mr-2 text-arina-cream/70" />
-          <h2 className="text-xs font-semibold text-arina-cream/70">{title}</h2>
+      <div className="space-y-1 py-1.5">
+        <div className="flex items-center px-3 py-1">
+          <MessageSquare size={13} className="mr-2 text-arina-cream/70" />
+          <h2 className="text-xs font-medium uppercase text-arina-cream/70">{title}</h2>
         </div>
         {chatList.map((chat) => (
           <Button
             key={chat.id}
             variant="ghost"
-            className="w-full justify-start text-left text-arina-cream hover:bg-arina-dark"
+            className="w-full justify-start text-left text-arina-cream hover:bg-arina-dark px-3 py-1.5 h-auto"
             asChild
           >
             <Link to={`/chat/${chat.id}`}>
@@ -104,7 +103,7 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
   const sidebarClasses = cn(
     "fixed inset-y-0 left-0 z-40 flex flex-col bg-arina-green border-r border-arina-medium transition-all duration-300 ease-in-out",
     isOpen 
-      ? "w-72 translate-x-0" 
+      ? "w-64 translate-x-0" 
       : "w-0 -translate-x-full md:translate-x-0 md:w-0",
     "md:relative"
   );
@@ -115,26 +114,26 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
         "flex items-center justify-between px-4 py-3",
         !isOpen && "md:hidden"
       )}>
-        <span className="text-xl font-bold text-arina-cream whitespace-nowrap">Arina</span>
+        <span className="text-base font-medium text-arina-cream whitespace-nowrap">Arina</span>
       </div>
       
-      <div className={cn("p-4", !isOpen && "md:hidden")}>
+      <div className={cn("p-3", !isOpen && "md:hidden")}>
         <Button
-          className="w-full bg-arina-medium hover:bg-arina-dark text-arina-cream flex items-center justify-center gap-2 whitespace-nowrap"
+          className="w-full bg-arina-medium hover:bg-arina-dark text-arina-cream flex items-center justify-center gap-1.5 whitespace-nowrap py-1.5 h-8"
           onClick={handleNewChat}
         >
-          <Plus size={16} /> New Chat
+          <Plus size={15} /> New Chat
         </Button>
       </div>
       
-      <ScrollArea className={cn("flex-1 px-3", !isOpen && "md:hidden")}>
-        <div className="space-y-1 py-2">
-          <h2 className="text-xs font-semibold text-arina-cream/70 px-2 py-1">ANALYSIS FEATURES</h2>
+      <ScrollArea className={cn("flex-1 px-2", !isOpen && "md:hidden")}>
+        <div className="space-y-1 py-1.5">
+          <h2 className="text-xs font-medium uppercase text-arina-cream/70 px-3 py-1">Analysis Features</h2>
           {analysisFeatures.map((feature) => (
             <Button
               key={feature.id}
               variant="ghost"
-              className={`w-full justify-start text-left text-arina-cream hover:bg-arina-dark ${
+              className={`w-full justify-start text-left text-arina-cream hover:bg-arina-dark px-3 py-1.5 h-auto text-sm ${
                 selectedFeature === feature.id ? 'bg-arina-dark' : ''
               }`}
               onClick={() => handleFeatureSelect(feature.id)}
@@ -147,24 +146,24 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
         <Separator className="my-2 bg-arina-medium" />
         
         {/* Chat history organized by time periods */}
-        {renderChatList(todayChats, "TODAY")}
-        {renderChatList(last7DaysChats, "PREVIOUS 7 DAYS")}
-        {renderChatList(last30DaysChats, "PREVIOUS 30 DAYS")}
+        {renderChatList(todayChats, "Today")}
+        {renderChatList(last7DaysChats, "Previous 7 days")}
+        {renderChatList(last30DaysChats, "Previous 30 days")}
       </ScrollArea>
       
-      <div className={cn("border-t border-arina-medium p-4", !isOpen && "md:hidden")}>
+      <div className={cn("border-t border-arina-medium p-3", !isOpen && "md:hidden")}>
         {user && (
-          <div className="mb-4 px-2">
-            <div className="text-sm text-arina-cream">{user.email}</div>
+          <div className="mb-3 px-2">
+            <div className="text-xs text-arina-cream">{user.email}</div>
           </div>
         )}
         <Button
           variant="ghost"
-          className="w-full justify-start text-left text-arina-cream hover:bg-arina-dark flex items-center"
+          className="w-full justify-start text-left text-arina-cream hover:bg-arina-dark flex items-center px-3 py-1.5 h-auto"
           onClick={signOut}
         >
-          <LogOut size={18} className="mr-2" />
-          <span>Sign Out</span>
+          <LogOut size={14} className="mr-2" />
+          <span className="text-sm">Sign Out</span>
         </Button>
       </div>
     </aside>

@@ -20,18 +20,18 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
   };
   
   return (
-    <div className="border-t border-gray-200 bg-white p-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="border-t border-gray-200 bg-white p-3">
+      <div className="max-w-4xl mx-auto">
         <form onSubmit={handleSubmit} className="relative">
           <div className="flex items-center gap-2">
             <Button
               type="button"
               size="icon"
               variant="ghost"
-              className="rounded-full"
+              className="rounded-full h-8 w-8"
               aria-label="Add attachment"
             >
-              <Plus size={18} />
+              <Plus size={16} />
             </Button>
             
             <div className="relative flex-1 bg-gray-100 rounded-2xl">
@@ -39,7 +39,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Ask anything"
-                className="bg-transparent border-none shadow-none py-6 pl-4 pr-20 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="bg-transparent border-none shadow-none py-5 pl-4 pr-20 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -48,34 +48,34 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
                 }}
               />
               
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8 rounded-full"
+                  className="h-7 w-7 rounded-full"
                   aria-label="Search"
                 >
-                  <Search size={16} />
+                  <Search size={14} />
                 </Button>
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8 rounded-full"
+                  className="h-7 w-7 rounded-full"
                   aria-label="Voice input"
                 >
-                  <Mic size={16} />
+                  <Mic size={14} />
                 </Button>
                 <Button
                   type="submit"
                   size="icon"
                   variant="ghost"
                   disabled={!message.trim()}
-                  className="h-8 w-8 rounded-full"
+                  className="h-7 w-7 rounded-full"
                   aria-label="Send message"
                 >
-                  <Send size={16} className={message.trim() ? "text-arina-green" : "text-gray-400"} />
+                  <Send size={14} className={message.trim() ? "text-arina-green" : "text-gray-400"} />
                 </Button>
               </div>
             </div>

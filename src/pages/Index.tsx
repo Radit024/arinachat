@@ -67,7 +67,7 @@ const Index = () => {
   }, [chatId]);
   
   return (
-    <div className="flex h-screen bg-secondary">
+    <div className="flex h-screen bg-[#F8F8F4]">
       <Sidebar 
         isOpen={isSidebarOpen} 
         setIsOpen={setIsSidebarOpen} 
@@ -93,9 +93,9 @@ const Index = () => {
           >
             <DialogContent className="sm:max-w-md">
               <div className="p-4 text-center">
-                <UserCircle2 className="w-12 h-12 mx-auto mb-4 text-primary" />
-                <h3 className="text-lg font-medium mb-2">Complete Your Business Profile</h3>
-                <p className="text-gray-500 mb-6">
+                <UserCircle2 className="w-10 h-10 mx-auto mb-3 text-primary" />
+                <h3 className="text-base font-medium mb-2">Complete Your Business Profile</h3>
+                <p className="text-sm text-gray-500 mb-4">
                   Help Arina provide more personalized agricultural business advice by completing your profile.
                 </p>
                 <ProfileEditor onProfileUpdate={() => setShowProfilePrompt(false)} />
@@ -110,15 +110,15 @@ const Index = () => {
             <Button
               variant="outline"
               size="sm"
-              className="fixed bottom-4 right-4 shadow-md bg-white"
+              className="fixed bottom-4 right-4 shadow-md bg-white text-xs h-7 px-2.5"
             >
-              <UserCircle2 className="mr-2 h-4 w-4" />
+              <UserCircle2 className="mr-1.5 h-3.5 w-3.5" />
               Business Profile
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <div className="p-2">
-              <h3 className="text-lg font-medium mb-4">Your Business Profile</h3>
+              <h3 className="text-base font-medium mb-3">Your Business Profile</h3>
               <ProfileEditor />
             </div>
           </DialogContent>

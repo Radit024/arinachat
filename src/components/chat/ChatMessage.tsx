@@ -39,20 +39,20 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ sender, content, timestamp })
   };
   
   return (
-    <div className="mb-6 max-w-3xl mx-auto">
+    <div className="mb-4 max-w-4xl mx-auto">
       {/* User message - right aligned with green background */}
       {!isArina && (
         <div className="flex flex-col items-end">
           <div className="flex items-center justify-end mb-1">
             <span className="text-xs text-gray-500 mr-2">{timestamp}</span>
-            <span className="font-medium text-sm">You</span>
+            <span className="text-xs font-medium">You</span>
           </div>
           <div className="flex items-start gap-2">
-            <div className="bg-[#0D472C] text-white p-3 rounded-lg max-w-[80%]">
-              <p className="whitespace-pre-wrap">{content}</p>
+            <div className="bg-[#0D472C] text-white p-2.5 rounded-lg max-w-[80%]">
+              <p className="whitespace-pre-wrap text-sm">{content}</p>
             </div>
-            <Avatar className="w-8 h-8 bg-gray-500 mt-1">
-              <span className="text-white font-semibold">U</span>
+            <Avatar className="w-7 h-7 bg-gray-500">
+              <span className="text-xs text-white font-semibold">U</span>
             </Avatar>
           </div>
         </div>
@@ -62,42 +62,42 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ sender, content, timestamp })
       {isArina && (
         <div className="flex flex-col items-start">
           <div className="flex items-center mb-1">
-            <span className="font-medium text-sm">Arina</span>
+            <span className="text-xs font-medium">Arina</span>
             <span className="text-xs text-gray-500 ml-2">{timestamp}</span>
           </div>
           <div className="flex items-start gap-2">
-            <Avatar className="w-8 h-8 bg-green-200 mt-1">
-              <span className="text-green-800 font-semibold">A</span>
+            <Avatar className="w-7 h-7 bg-green-200">
+              <span className="text-xs text-green-800 font-semibold">A</span>
             </Avatar>
-            <div className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm max-w-[80%]">
-              <p className="whitespace-pre-wrap text-gray-800">{content}</p>
+            <div className="bg-white border border-gray-200 p-2.5 rounded-lg shadow-sm max-w-[80%]">
+              <p className="whitespace-pre-wrap text-sm text-gray-800">{content}</p>
               
               {/* Message actions */}
-              <div className="flex items-center gap-2 pt-1 mt-2">
+              <div className="flex items-center gap-1 pt-1 mt-1.5">
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="h-8 px-2 text-gray-500 hover:text-gray-700"
+                  className="h-6 px-1.5 text-xs text-gray-500 hover:text-gray-700"
                   onClick={handleCopy}
                 >
-                  {copied ? <Check size={14} className="mr-1 text-green-500" /> : <Copy size={14} className="mr-1" />}
+                  {copied ? <Check size={12} className="mr-1 text-green-500" /> : <Copy size={12} className="mr-1" />}
                   {copied ? "Copied" : "Copy"}
                 </Button>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className={cn("h-8 px-2", liked ? "text-green-500" : "text-gray-500 hover:text-gray-700")}
+                  className={cn("h-6 px-1.5", liked ? "text-green-500" : "text-gray-500 hover:text-gray-700")}
                   onClick={handleLike}
                 >
-                  <ThumbsUp size={14} />
+                  <ThumbsUp size={12} />
                 </Button>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className={cn("h-8 px-2", disliked ? "text-red-500" : "text-gray-500 hover:text-gray-700")}
+                  className={cn("h-6 px-1.5", disliked ? "text-red-500" : "text-gray-500 hover:text-gray-700")}
                   onClick={handleDislike}
                 >
-                  <ThumbsDown size={14} />
+                  <ThumbsDown size={12} />
                 </Button>
               </div>
             </div>
