@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { Trash2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { deleteMemoryData } from '@/services/memoryService';
+import { deleteMemoryData, updateUserPreferences } from '@/services/memoryService';
 
 interface MemorySettingsProps {
   memoryUser: any;
@@ -25,18 +24,12 @@ const MemorySettings: React.FC<MemorySettingsProps> = ({
     if (!memoryUser) return;
     
     try {
-      // Update user preferences in database
-      const { error } = await supabase
-        .from('memory_users')
-        .update({
-          preferences: {
-            ...memoryUser.preferences,
-            memoryEnabled: checked
-          }
-        })
-        .eq('id', memoryUser.id);
+      // Update user preferences using the memoryService
+      const success = await updateUserPreferences(memoryUser.id, {
+        memoryEnabled: checked
+      });
       
-      if (error) throw error;
+      if (!success) throw new Error("Failed to update preferences");
       
       onToggleMemory(checked);
       
@@ -68,9 +61,15 @@ const MemorySettings: React.FC<MemorySettingsProps> = ({
           title: 'Memory deleted',
           description: `Your ${type} memory has been deleted successfully.`,
         });
+      } else {
+        throw new Error(`Failed to delete ${type}`);
       }
-    } catch (error) {
-      console.error('Error deleting memory:', error);
+    } catch (error: any) {
+      toast({
+        title: 'Error deleting memory',
+        description: error.message,
+        variant: 'destructive'
+      });
     } finally {
       setIsDeleting(false);
     }

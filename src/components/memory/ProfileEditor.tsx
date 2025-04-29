@@ -14,9 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { Edit2, Save, User } from 'lucide-react';
-import { getUserProfile, saveUserProfile, initializeMemoryUser } from '@/services/memoryService';
+import { getUserProfile, saveUserProfile, initializeMemoryUser, UserProfile } from '@/services/memoryService';
 import { Badge } from '@/components/ui/badge';
-import { UserProfile } from '@/services/memoryService';
 
 interface ProfileEditorProps {
   onProfileUpdate?: (profile: UserProfile) => void;
@@ -79,7 +78,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ onProfileUpdate }) => {
         .map(crop => crop.trim())
         .filter(crop => crop !== '');
       
-      const farmSizeNumber = formData.farmSize ? parseFloat(formData.farmSize) : null;
+      const farmSizeNumber = formData.farmSize ? parseFloat(formData.farmSize) : undefined;
       
       const profileData = {
         business_name: formData.businessName,
@@ -104,9 +103,15 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ onProfileUpdate }) => {
         });
         
         setIsDialogOpen(false);
+      } else {
+        throw new Error('Failed to update profile');
       }
-    } catch (error) {
-      console.error('Error updating profile:', error);
+    } catch (error: any) {
+      toast({
+        title: 'Error updating profile',
+        description: error.message,
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
