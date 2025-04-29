@@ -6,8 +6,7 @@ import ChatRoom from '@/components/chat/ChatRoom';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import ProfileEditor from '@/components/memory/ProfileEditor';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { UserCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { initializeMemoryUser } from '@/services/memoryService';
@@ -103,26 +102,6 @@ const Index = () => {
             </DialogContent>
           </Dialog>
         )}
-        
-        {/* Profile Button (fixed position) */}
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="fixed bottom-4 right-4 shadow-md bg-white text-xs h-7 px-2.5"
-            >
-              <UserCircle2 className="mr-1.5 h-3.5 w-3.5" />
-              Business Profile
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <div className="p-2">
-              <h3 className="text-base font-medium mb-3">Your Business Profile</h3>
-              <ProfileEditor />
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
