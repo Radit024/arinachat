@@ -31,35 +31,45 @@ serve(async (req) => {
     
     switch (featureId) {
       case 'feasibility':
-        systemMessage += 'Create a visualization for a feasibility analysis showing marketplace factors.';
+        systemMessage += 'Create a visualization for a business feasibility analysis showing market factors, costs, and potential revenue.';
         break;
       case 'forecasting':
         systemMessage += 'Create a visualization for business forecasting showing projected growth over time.';
         break;
-      case 'optimization':
-        systemMessage += 'Create a visualization for business optimization showing efficiency improvements.';
-        break;
-      case 'cultivation':
-        systemMessage += 'Create a visualization for agricultural business showing seasonal yields and growing conditions.';
-        break;
       case 'swot':
         systemMessage += 'Create a visualization for SWOT analysis showing strengths, weaknesses, opportunities and threats.';
+        break;
+      case 'canvas':
+        systemMessage += 'Create a visualization for Business Model Canvas showing the nine components of the business model.';
         break;
       default:
         systemMessage += 'Create a business data visualization that is clear and professional.';
     }
     
-    // Call the image generation API using Gemini API
-    const apiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not configured')
-    }
+    // For this implementation, we'll use placeholder images instead of actual AI generation
+    // In a production environment, you would integrate with an image generation API
     
     console.log('Generating chart with prompt:', prompt)
     
-    // For testing, we'll use a placeholder image to avoid API costs
-    // In production, use the actual Gemini API call
-    const imageUrl = `https://placehold.co/800x600?text=Business+Chart+for+${featureId}`
+    // Generate appropriate placeholder images based on the feature type
+    let imageUrl;
+    
+    switch (featureId) {
+      case 'feasibility':
+        imageUrl = 'https://placehold.co/800x600/9b87f5/FFFFFF?text=Feasibility+Analysis+Chart&font=roboto';
+        break;
+      case 'forecasting':
+        imageUrl = 'https://placehold.co/800x600/7E69AB/FFFFFF?text=Business+Forecast+Chart&font=roboto';
+        break;
+      case 'swot':
+        imageUrl = 'https://placehold.co/800x600/6E59A5/FFFFFF?text=SWOT+Analysis+Chart&font=roboto';
+        break;
+      case 'canvas':
+        imageUrl = 'https://placehold.co/800x600/8B5CF6/FFFFFF?text=Business+Model+Canvas&font=roboto';
+        break;
+      default:
+        imageUrl = 'https://placehold.co/800x600/9b87f5/FFFFFF?text=Business+Analysis+Chart&font=roboto';
+    }
     
     // Return the response with the image URL
     return new Response(
@@ -69,43 +79,37 @@ serve(async (req) => {
       },
     )
     
-    // Uncomment this code to integrate with a real image generation API
+    // To integrate with a real AI image generation service like DALL-E 3 or Midjourney,
+    // you would uncomment and adapt the code below:
+    
     /*
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent', {
+    const apiKey = Deno.env.get('AI_API_KEY')
+    if (!apiKey) {
+      throw new Error('AI_API_KEY is not configured')
+    }
+    
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.4,
-          topK: 32,
-          topP: 1,
-          maxOutputTokens: 4096,
-        }
+        model: "dall-e-3",
+        prompt: `Create a professional business chart visualization for ${featureId} analysis with the following data: ${prompt}. Make it look like a high-quality infographic suitable for a business presentation.`,
+        n: 1,
+        size: "1024x1024",
+        quality: "standard"
       })
     })
     
     const data = await response.json()
     
     if (data.error) {
-      console.error('API error:', data)
-      throw new Error(`API error: ${data.error.message}`)
+      throw new Error(`API error: ${JSON.stringify(data.error)}`)
     }
     
-    // Process the response to extract the image URL
-    const imageUrl = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const imageUrl = data.data?.[0]?.url
     
     return new Response(
       JSON.stringify({ imageUrl }),

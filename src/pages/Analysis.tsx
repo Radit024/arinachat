@@ -6,39 +6,69 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Calculator, ChartBar, ChartLine, ChartPie, ChartArea, Database } from 'lucide-react';
+import { Calculator, ChartBar, ChartLine, ChartPie, FileSpreadsheet, Layers, AlertCircle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
-const analysisConfig = [
+// Define the feature types and their configurations
+const analysisFeatures = [
   {
     id: 'feasibility',
-    name: 'Feasibility Analysis',
-    description: 'Evaluate market conditions, competition, and success factors',
+    name: 'Business Feasibility Analysis',
+    description: 'Analyze market conditions, costs, and potential returns to determine business viability',
     icon: Calculator,
-    chartType: 'bar',
-    metrics: ['Market Size', 'Competition', 'Cost', 'Potential Revenue', 'Risk'],
-    calculation: (inputs: Record<string, number>) => {
-      const marketSize = inputs.marketSize || 0;
-      const competition = inputs.competition || 0;
-      const cost = inputs.cost || 0;
-      const revenue = inputs.revenue || 0;
-      const risk = inputs.risk || 0;
+    implemented: true,
+    fields: [
+      { name: 'businessName', label: 'Business Name', type: 'text', placeholder: 'Enter business name' },
+      { name: 'industry', label: 'Industry', type: 'text', placeholder: 'Enter industry' },
+      { name: 'initialInvestment', label: 'Initial Investment ($)', type: 'number', placeholder: '0' },
+      { name: 'monthlyExpenses', label: 'Monthly Expenses ($)', type: 'number', placeholder: '0' },
+      { name: 'expectedRevenue', label: 'Expected Annual Revenue ($)', type: 'number', placeholder: '0' },
+      { name: 'targetMarketSize', label: 'Target Market Size', type: 'text', placeholder: 'Enter market size' },
+      { name: 'growthRate', label: 'Expected Annual Growth Rate (%)', type: 'number', placeholder: '0' },
+      { name: 'breakEvenPeriod', label: 'Expected Break-even Period (months)', type: 'number', placeholder: '0' }
+    ],
+    calculation: (inputs) => {
+      // Simple feasibility calculation algorithm
+      const initialInvestment = parseFloat(inputs.initialInvestment) || 0;
+      const monthlyExpenses = parseFloat(inputs.monthlyExpenses) || 0;
+      const expectedRevenue = parseFloat(inputs.expectedRevenue) || 0;
+      const growthRate = parseFloat(inputs.growthRate) || 0;
+      const breakEvenPeriod = parseFloat(inputs.breakEvenPeriod) || 12;
       
-      const feasibilityScore = (marketSize * 0.3) + ((10 - competition) * 0.15) + ((10 - cost) * 0.2) + (revenue * 0.25) + ((10 - risk) * 0.1);
+      const annualExpenses = monthlyExpenses * 12;
+      const profit = expectedRevenue - annualExpenses;
+      const roi = initialInvestment > 0 ? (profit / initialInvestment) * 100 : 0;
+      const paybackPeriod = profit > 0 ? initialInvestment / profit : 0;
+      
+      // Calculate feasibility score (0-100)
+      let feasibilityScore = 0;
+      if (profit > 0) feasibilityScore += 30;
+      if (roi > 15) feasibilityScore += 20;
+      if (paybackPeriod < 2) feasibilityScore += 20;
+      if (growthRate > 5) feasibilityScore += 15;
+      if (breakEvenPeriod < 18) feasibilityScore += 15;
+      
       return {
-        score: feasibilityScore.toFixed(2),
-        data: [
-          { name: 'Market Size', value: marketSize },
-          { name: 'Competition', value: 10 - competition },
-          { name: 'Cost Efficiency', value: 10 - cost },
-          { name: 'Revenue Potential', value: revenue },
-          { name: 'Risk Assessment', value: 10 - risk },
+        score: feasibilityScore,
+        metrics: [
+          { name: 'Profit Margin', value: profit > 0 ? (profit / expectedRevenue * 100).toFixed(2) + '%' : '0%' },
+          { name: 'ROI', value: roi.toFixed(2) + '%' },
+          { name: 'Payback Period', value: paybackPeriod.toFixed(2) + ' years' },
+          { name: 'Break-even', value: breakEvenPeriod + ' months' }
+        ],
+        chartData: [
+          { name: 'Initial Investment', value: initialInvestment },
+          { name: 'Annual Expenses', value: annualExpenses },
+          { name: 'Expected Revenue', value: expectedRevenue },
+          { name: 'Profit', value: profit > 0 ? profit : 0 }
         ]
       };
     }
@@ -46,225 +76,276 @@ const analysisConfig = [
   {
     id: 'forecasting',
     name: 'Business Forecasting',
-    description: 'Project sales, market trends, and future developments',
+    description: 'Predict future trends based on historical data and market conditions',
     icon: ChartLine,
-    chartType: 'line',
-    metrics: ['Initial Sales', 'Growth Rate (%)', 'Months to Forecast', 'Seasonality Factor', 'Market Trend'],
-    calculation: (inputs: Record<string, number>) => {
-      const initialSales = inputs.initialSales || 0;
-      const growthRate = inputs.growthRate || 0;
-      const months = inputs.months || 12;
-      const seasonality = inputs.seasonality || 0;
-      const marketTrend = inputs.marketTrend || 0;
+    implemented: true,
+    fields: [
+      { name: 'forecastType', label: 'Forecast Type', type: 'select', options: ['Sales Forecast', 'Revenue Forecast', 'Growth Forecast'] },
+      { name: 'timePeriod', label: 'Time Period', type: 'select', options: ['Monthly', 'Quarterly', 'Yearly'] },
+      { name: 'initialValue', label: 'Initial Value', type: 'number', placeholder: '0' },
+      { name: 'growthRate', label: 'Growth Rate (%)', type: 'number', placeholder: '0' },
+      { name: 'forecastPeriods', label: 'Number of Periods to Forecast', type: 'number', placeholder: '12' },
+      { name: 'seasonality', label: 'Seasonality Factor (0-10)', type: 'number', placeholder: '5' }
+    ],
+    calculation: (inputs) => {
+      const initialValue = parseFloat(inputs.initialValue) || 1000;
+      const growthRate = parseFloat(inputs.growthRate) || 5;
+      const periods = parseInt(inputs.forecastPeriods) || 12;
+      const seasonality = parseFloat(inputs.seasonality) || 5;
+      const timePeriod = inputs.timePeriod || 'Monthly';
       
-      const data = [];
-      for (let i = 0; i < months; i++) {
+      // Generate forecast data with seasonality
+      const forecastData = [];
+      for (let i = 0; i < periods; i++) {
         const growthFactor = 1 + (growthRate / 100);
-        const seasonalFactor = 1 + (Math.sin((i / 12) * Math.PI * 2) * (seasonality / 10));
-        const trendFactor = 1 + ((marketTrend / 10) * (i / months));
-        const sales = initialSales * Math.pow(growthFactor, i/12) * seasonalFactor * trendFactor;
+        // Add seasonal variations (higher in middle of year, lower at start/end)
+        const seasonalFactor = 1 + ((Math.sin((i / periods) * Math.PI * 2) * (seasonality / 10)));
+        const value = initialValue * Math.pow(growthFactor, i) * seasonalFactor;
         
-        data.push({
-          name: `Month ${i+1}`,
-          value: parseFloat(sales.toFixed(2))
+        let label;
+        if (timePeriod === 'Monthly') {
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          label = monthNames[i % 12];
+        } else if (timePeriod === 'Quarterly') {
+          label = `Q${(i % 4) + 1}`;
+        } else {
+          label = `Year ${i+1}`;
+        }
+        
+        forecastData.push({
+          name: label,
+          value: Math.round(value)
         });
       }
       
-      const avgSales = data.reduce((sum, item) => sum + item.value, 0) / data.length;
+      // Calculate metrics
+      const finalValue = forecastData[forecastData.length - 1].value;
+      const totalGrowth = ((finalValue - initialValue) / initialValue) * 100;
+      const averageValue = forecastData.reduce((sum, item) => sum + item.value, 0) / forecastData.length;
       
       return {
-        score: avgSales.toFixed(2),
-        data
-      };
-    }
-  },
-  {
-    id: 'optimization',
-    name: 'Business Optimization',
-    description: 'Improve efficiency, maximize profit, and minimize costs',
-    icon: ChartBar,
-    chartType: 'bar',
-    metrics: ['Current Efficiency', 'Process Improvements', 'Technology Level', 'Staff Training', 'Resource Allocation'],
-    calculation: (inputs: Record<string, number>) => {
-      const currentEfficiency = inputs.currentEfficiency || 0;
-      const processImprovements = inputs.processImprovements || 0;
-      const technologyLevel = inputs.technologyLevel || 0;
-      const staffTraining = inputs.staffTraining || 0;
-      const resourceAllocation = inputs.resourceAllocation || 0;
-      
-      const optimizationScore = (currentEfficiency * 0.2) + (processImprovements * 0.25) + (technologyLevel * 0.2) + (staffTraining * 0.15) + (resourceAllocation * 0.2);
-      
-      return {
-        score: optimizationScore.toFixed(2),
-        data: [
-          { name: 'Current Efficiency', value: currentEfficiency },
-          { name: 'Process Improvements', value: processImprovements },
-          { name: 'Technology Level', value: technologyLevel },
-          { name: 'Staff Training', value: staffTraining },
-          { name: 'Resource Allocation', value: resourceAllocation },
-        ]
-      };
-    }
-  },
-  {
-    id: 'cultivation',
-    name: 'Agricultural Business',
-    description: 'Optimize growing conditions, market timing, and cultivation strategies',
-    icon: ChartArea,
-    chartType: 'area',
-    metrics: ['Soil Quality', 'Climate Suitability', 'Water Availability', 'Growing Season Length', 'Pest Risk'],
-    calculation: (inputs: Record<string, number>) => {
-      const soilQuality = inputs.soilQuality || 0;
-      const climateSuitability = inputs.climateSuitability || 0;
-      const waterAvailability = inputs.waterAvailability || 0;
-      const growingSeason = inputs.growingSeason || 0;
-      const pestRisk = inputs.pestRisk || 0;
-      
-      const cultivationScore = (soilQuality * 0.25) + (climateSuitability * 0.2) + (waterAvailability * 0.2) + (growingSeason * 0.15) + ((10 - pestRisk) * 0.2);
-      
-      // Generate monthly data for the year
-      const data = [];
-      for (let i = 0; i < 12; i++) {
-        const monthFactor = Math.sin((i / 12) * Math.PI * 2 + Math.PI/2);
-        const seasonalYield = cultivationScore * (0.7 + (0.3 * (monthFactor + 1)/2));
-        
-        data.push({
-          name: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i],
-          value: parseFloat(seasonalYield.toFixed(2))
-        });
-      }
-      
-      return {
-        score: cultivationScore.toFixed(2),
-        data
+        score: Math.min(100, Math.max(0, totalGrowth)),
+        metrics: [
+          { name: 'Total Growth', value: `${totalGrowth.toFixed(2)}%` },
+          { name: 'Final Value', value: finalValue.toFixed(2) },
+          { name: 'Average Value', value: averageValue.toFixed(2) },
+          { name: 'CAGR', value: `${(Math.pow(finalValue / initialValue, 1 / periods) - 1) * 100}%` }
+        ],
+        chartData: forecastData
       };
     }
   },
   {
     id: 'swot',
     name: 'SWOT Analysis',
-    description: 'Analyze strengths, weaknesses, opportunities, and threats',
+    description: 'Identify Strengths, Weaknesses, Opportunities, and Threats to your business',
     icon: ChartPie,
-    chartType: 'pie',
-    metrics: ['Strengths', 'Weaknesses', 'Opportunities', 'Threats'],
-    calculation: (inputs: Record<string, number>) => {
-      const strengths = inputs.strengths || 0;
-      const weaknesses = inputs.weaknesses || 0;
-      const opportunities = inputs.opportunities || 0;
-      const threats = inputs.threats || 0;
+    implemented: true,
+    fields: [
+      { name: 'businessName', label: 'Business or Project Name', type: 'text', placeholder: 'Enter the name of your business or project' },
+      { name: 'strengths', label: 'Strengths', type: 'textarea', placeholder: 'List your business strengths here' },
+      { name: 'weaknesses', label: 'Weaknesses', type: 'textarea', placeholder: 'List your business weaknesses here' },
+      { name: 'opportunities', label: 'Opportunities', type: 'textarea', placeholder: 'List your business opportunities here' },
+      { name: 'threats', label: 'Threats', type: 'textarea', placeholder: 'List your business threats here' }
+    ],
+    calculation: (inputs) => {
+      // Calculate SWOT score based on text length as a simple metric
+      const strengthsLength = (inputs.strengths || '').length;
+      const weaknessesLength = (inputs.weaknesses || '').length;
+      const opportunitiesLength = (inputs.opportunities || '').length;
+      const threatsLength = (inputs.threats || '').length;
       
-      const total = strengths + weaknesses + opportunities + threats;
-      const swotScore = (strengths * 0.3) + ((10 - weaknesses) * 0.2) + (opportunities * 0.3) + ((10 - threats) * 0.2);
+      // For visualization purposes, normalize lengths to values between 10 and 100
+      const normalizeLength = (length) => Math.min(100, Math.max(10, length / 10));
+      
+      const strengthsValue = normalizeLength(strengthsLength);
+      const weaknessesValue = normalizeLength(weaknessesLength);
+      const opportunitiesValue = normalizeLength(opportunitiesLength);
+      const threatsValue = normalizeLength(threatsLength);
+      
+      // Calculate SWOT balance score
+      const totalLength = strengthsLength + weaknessesLength + opportunitiesLength + threatsLength;
+      const swotScore = totalLength > 0 ? 
+        ((strengthsLength + opportunitiesLength) / totalLength) * 100 : 50;
       
       return {
-        score: swotScore.toFixed(2),
-        data: [
-          { name: 'Strengths', value: strengths, fill: '#4CAF50' },
-          { name: 'Weaknesses', value: weaknesses, fill: '#F44336' },
-          { name: 'Opportunities', value: opportunities, fill: '#2196F3' },
-          { name: 'Threats', value: threats, fill: '#FF9800' },
+        score: Math.round(swotScore),
+        metrics: [
+          { name: 'Strengths', value: inputs.strengths || 'None provided' },
+          { name: 'Weaknesses', value: inputs.weaknesses || 'None provided' },
+          { name: 'Opportunities', value: inputs.opportunities || 'None provided' },
+          { name: 'Threats', value: inputs.threats || 'None provided' }
+        ],
+        chartData: [
+          { name: 'Strengths', value: strengthsValue, fill: '#4CAF50' },
+          { name: 'Weaknesses', value: weaknessesValue, fill: '#F44336' },
+          { name: 'Opportunities', value: opportunitiesValue, fill: '#2196F3' },
+          { name: 'Threats', value: threatsValue, fill: '#FF9800' }
         ]
       };
     }
+  },
+  {
+    id: 'canvas',
+    name: 'Business Model Canvas',
+    description: 'Interactive tool to design and refine your business model visually',
+    icon: Layers,
+    implemented: true,
+    fields: [
+      { name: 'businessName', label: 'Business Name', type: 'text', placeholder: 'Enter business name' },
+      { name: 'keyPartners', label: '1. Key Partners', type: 'textarea', placeholder: 'Who are your key partners and suppliers? Which key resources are you acquiring from them? Which key activities do they perform?' },
+      { name: 'keyActivities', label: '2. Key Activities', type: 'textarea', placeholder: 'What key activities does your value proposition require? Your distribution channels? Customer relationships? Revenue streams?' },
+      { name: 'valueProposition', label: '3. Value Propositions', type: 'textarea', placeholder: 'What value do you deliver to the customer? Which of your customer\'s problems are you helping to solve? What bundles of products and services are you offering to each segment?' },
+      { name: 'customerRelationships', label: '4. Customer Relationships', type: 'textarea', placeholder: 'What type of relationship does each of your customer segments expect you to establish and maintain with them?' },
+      { name: 'customerSegments', label: '5. Customer Segments', type: 'textarea', placeholder: 'For whom are you creating value? Who are your most important customers?' },
+      { name: 'keyResources', label: '6. Key Resources', type: 'textarea', placeholder: 'What key resources does your value proposition require? Your distribution channels? Customer relationships? Revenue streams?' },
+      { name: 'channels', label: '7. Channels', type: 'textarea', placeholder: 'Through which channels do your customer segments want to be reached? How are you reaching them now? How are your channels integrated?' },
+      { name: 'costStructure', label: '8. Cost Structure', type: 'textarea', placeholder: 'What are the most important costs inherent in your business model? Which key resources are most expensive? Which key activities are most expensive?' },
+      { name: 'revenueStreams', label: '9. Revenue Streams', type: 'textarea', placeholder: 'For what value are your customers really willing to pay? How are they currently paying? How would they prefer to pay? How much does each revenue stream contribute to overall revenues?' }
+    ],
+    calculation: (inputs) => {
+      // Calculate completeness score for Business Model Canvas
+      const fields = ['keyPartners', 'keyActivities', 'valueProposition', 'customerRelationships', 
+                     'customerSegments', 'keyResources', 'channels', 'costStructure', 'revenueStreams'];
+      
+      let totalScore = 0;
+      let filledSections = 0;
+      
+      // Count filled sections and calculate average length
+      for (const field of fields) {
+        if (inputs[field] && inputs[field].length > 0) {
+          filledSections++;
+          totalScore += Math.min(100, inputs[field].length / 5);
+        }
+      }
+      
+      const completionScore = (filledSections / fields.length) * 100;
+      const avgScore = filledSections > 0 ? totalScore / filledSections : 0;
+      
+      // Create chart data for visualization
+      const chartData = fields.map(field => {
+        const value = inputs[field] ? Math.min(100, inputs[field].length / 5) : 0;
+        const label = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        return {
+          name: label,
+          value: value
+        };
+      });
+      
+      return {
+        score: Math.round(completionScore),
+        metrics: [
+          { name: 'Completion', value: `${Math.round(completionScore)}%` },
+          { name: 'Sections Filled', value: `${filledSections}/${fields.length}` },
+          { name: 'Average Detail', value: `${Math.round(avgScore)}%` }
+        ],
+        chartData: chartData
+      };
+    }
+  },
+  {
+    id: 'optimization',
+    name: 'Business Optimization',
+    description: 'Coming Soon',
+    icon: ChartBar,
+    implemented: false
+  },
+  {
+    id: 'cultivation',
+    name: 'Agricultural Business',
+    description: 'Coming Soon',
+    icon: FileSpreadsheet,
+    implemented: false
   }
 ];
 
 const Analysis = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [selectedFeature, setSelectedFeature] = useState<string | null>('feasibility');
-  const [inputs, setInputs] = useState<Record<string, Record<string, number>>>({});
-  const [results, setResults] = useState<Record<string, { score: string, data: any[] }>>({});
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isGeneratingChart, setIsGeneratingChart] = useState<boolean>(false);
-  const [aiGeneratedChart, setAiGeneratedChart] = useState<string | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState('feasibility');
+  const [currentTab, setCurrentTab] = useState('input');
+  const [formInputs, setFormInputs] = useState({});
+  const [results, setResults] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiGeneratedImage, setAiGeneratedImage] = useState(null);
+  
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  // Get the current feature configuration
+  const currentFeature = analysisFeatures.find(f => f.id === selectedFeature) || analysisFeatures[0];
   
-  const handleInputChange = (featureId: string, metric: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setInputs(prev => ({
+  const handleInputChange = (name, value) => {
+    setFormInputs(prev => ({
       ...prev,
-      [featureId]: {
-        ...(prev[featureId] || {}),
-        [metric.toLowerCase().replace(/\s+/g, '')]: Math.min(10, Math.max(0, numValue))
-      }
+      [name]: value
     }));
   };
   
-  const calculateAnalysis = (featureId: string) => {
-    const feature = analysisConfig.find(f => f.id === featureId);
-    if (feature) {
-      const result = feature.calculation(inputs[featureId] || {});
-      setResults(prev => ({
-        ...prev,
-        [featureId]: result
-      }));
-      
-      // Save the result to the database if user is logged in
-      if (user) {
-        saveAnalysisResult(featureId, result);
-      }
-    }
+  const handleSelectChange = (name, value) => {
+    handleInputChange(name, value);
   };
   
-  const saveAnalysisResult = async (type: string, data: any) => {
-    try {
-      setIsLoading(true);
-      const { error } = await supabase
-        .from('analysis_results')
-        .insert({
-          user_id: user!.id,
-          type,
-          data
-        });
-        
-      if (error) throw error;
+  const handleCalculate = () => {
+    if (!currentFeature.implemented) {
       toast({
-        title: "Results saved",
-        description: "Your analysis has been saved to your profile.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error saving results",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const generateAIChart = async (featureId: string) => {
-    if (!results[featureId]) {
-      toast({
-        title: "No results available",
-        description: "Please calculate results first before generating charts.",
-        variant: "destructive",
+        title: "Feature Coming Soon",
+        description: "This analysis feature is not yet implemented.",
+        variant: "default"
       });
       return;
     }
     
+    setIsLoading(true);
+    
+    // Small delay to show loading state
+    setTimeout(() => {
+      try {
+        const result = currentFeature.calculation(formInputs);
+        setResults(result);
+        setCurrentTab('results');
+        
+        toast({
+          title: "Analysis Complete",
+          description: `${currentFeature.name} calculated with a score of ${result.score}%`,
+        });
+      } catch (error) {
+        console.error("Calculation error:", error);
+        toast({
+          title: "Calculation Error",
+          description: "There was a problem calculating your results.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }, 1000);
+  };
+  
+  const generateAIChart = async () => {
+    if (!results) {
+      toast({
+        title: "No Results",
+        description: "Please run the analysis first to generate an AI chart.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsGeneratingAI(true);
+    
     try {
-      setIsGeneratingChart(true);
+      // Create a prompt for the AI based on feature type and results
+      const prompt = `Create a professional ${currentFeature.name} chart visualization based on the following data: ${JSON.stringify(results.chartData)}. Make it visually appealing with corporate colors and clear labels.`;
       
-      // Get the selected feature details
-      const feature = analysisConfig.find(f => f.id === featureId);
-      
-      // Create a prompt for the AI
-      const prompt = `Generate a professional business chart image for a ${feature?.name} with the following data points: ${JSON.stringify(results[featureId].data)}. The chart should be visually appealing, use corporate colors, and include labels for each data point. Make it suitable for a business presentation.`;
-      
-      // Call the Supabase edge function to generate image
-      const response = await fetch('https://yuqmvayaiiqbkeletlno.supabase.co/functions/v1/generateChart', {
+      // Call the Supabase edge function to generate chart
+      const response = await fetch(`${window.location.origin}/functions/v1/generateChart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
-        body: JSON.stringify({ prompt, featureId })
+        body: JSON.stringify({ prompt, featureId: currentFeature.id })
       });
       
       const data = await response.json();
@@ -273,33 +354,209 @@ const Analysis = () => {
         throw new Error(data.error);
       }
       
-      setAiGeneratedChart(data.imageUrl);
+      setAiGeneratedImage(data.imageUrl);
+      setCurrentTab('ai');
       
       toast({
-        title: "Chart generated",
-        description: "AI has generated a chart based on your analysis.",
+        title: "AI Chart Generated",
+        description: "Your custom chart visualization has been created.",
       });
-    } catch (error: any) {
-      console.error("Error generating chart:", error);
+    } catch (error) {
+      console.error("AI generation error:", error);
       toast({
-        title: "Error generating chart",
-        description: error.message || "An error occurred while generating the chart",
-        variant: "destructive",
+        title: "Generation Error",
+        description: "There was a problem generating your AI chart.",
+        variant: "destructive"
       });
     } finally {
-      setIsGeneratingChart(false);
+      setIsGeneratingAI(false);
     }
   };
   
-  const currentFeature = analysisConfig.find(f => f.id === selectedFeature);
+  const saveAnalysisResults = async () => {
+    if (!results || !user) return;
+    
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase
+        .from('analysis_results')
+        .insert({
+          user_id: user.id,
+          feature_id: currentFeature.id,
+          inputs: formInputs,
+          results: results,
+          ai_image: aiGeneratedImage
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Analysis Saved",
+        description: "Your analysis results have been saved to your account.",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+      toast({
+        title: "Save Error",
+        description: "There was a problem saving your analysis.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle navigation to feature from sidebar
+  const handleFeatureSelect = (featureId) => {
+    setSelectedFeature(featureId);
+    setFormInputs({});
+    setResults(null);
+    setAiGeneratedImage(null);
+    setCurrentTab('input');
+  };
+  
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+  
+  // Render the appropriate chart based on feature type
+  const renderChart = () => {
+    if (!results || !results.chartData) return null;
+    
+    const config = {};
+    
+    switch (currentFeature.id) {
+      case 'feasibility':
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={results.chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip content={<ChartTooltipContent />} />
+              <Legend />
+              <Bar dataKey="value" fill="#9b87f5" />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      case 'forecasting':
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={results.chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip content={<ChartTooltipContent />} />
+              <Legend />
+              <Line type="monotone" dataKey="value" stroke="#9b87f5" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        );
+      case 'swot':
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={results.chartData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={120}
+                label={(entry) => entry.name}
+              />
+              <Tooltip content={<ChartTooltipContent />} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        );
+      case 'canvas':
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={results.chartData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="name" type="category" width={150} />
+              <Tooltip content={<ChartTooltipContent />} />
+              <Legend />
+              <Bar dataKey="value" fill="#9b87f5" />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      default:
+        return null;
+    }
+  };
+  
+  // Render the input form based on the selected feature
+  const renderInputForm = () => {
+    if (!currentFeature.implemented) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 text-center">
+          <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
+          <h3 className="text-xl font-medium mb-2">Coming Soon</h3>
+          <p className="text-muted-foreground max-w-md">
+            We're currently working on this feature. It will be available in a future update.
+          </p>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {currentFeature.fields.map((field) => (
+          <div key={field.name} className="space-y-2">
+            <label htmlFor={field.name} className="text-sm font-medium">
+              {field.label}
+            </label>
+            
+            {field.type === 'select' ? (
+              <Select 
+                onValueChange={(value) => handleSelectChange(field.name, value)}
+                value={formInputs[field.name] || ''}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={field.placeholder || 'Select an option'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {field.options?.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : field.type === 'textarea' ? (
+              <Textarea
+                id={field.name}
+                placeholder={field.placeholder}
+                value={formInputs[field.name] || ''}
+                onChange={(e) => handleInputChange(field.name, e.target.value)}
+                className="min-h-[100px]"
+              />
+            ) : (
+              <Input
+                id={field.name}
+                type={field.type}
+                placeholder={field.placeholder}
+                value={formInputs[field.name] || ''}
+                onChange={(e) => handleInputChange(field.name, e.target.value)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
   
   return (
     <div className="flex h-screen bg-[#F8F8F4]">
       <Sidebar 
         isOpen={isSidebarOpen} 
-        setIsOpen={setIsSidebarOpen} 
+        setIsOpen={setIsSidebarOpen}
         selectedFeature={selectedFeature}
-        setSelectedFeature={setSelectedFeature}
+        setSelectedFeature={handleFeatureSelect}
       />
       
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${
@@ -309,14 +566,16 @@ const Analysis = () => {
         
         <main className="flex-1 overflow-auto p-6 bg-[#F8F8F4]">
           <div className="container mx-auto">
-            <h1 className="text-3xl font-bold mb-6">{currentFeature?.name || 'Analysis'}</h1>
-            <p className="text-muted-foreground mb-6">{currentFeature?.description}</p>
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-[#1A1F2C]">{currentFeature.name}</h1>
+              <p className="text-muted-foreground">{currentFeature.description}</p>
+            </div>
             
-            <Tabs defaultValue="input" className="w-full">
+            <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
               <TabsList>
                 <TabsTrigger value="input">Input Data</TabsTrigger>
-                <TabsTrigger value="results">Results</TabsTrigger>
-                <TabsTrigger value="ai">AI Generated Chart</TabsTrigger>
+                <TabsTrigger value="results" disabled={!results}>Results</TabsTrigger>
+                <TabsTrigger value="ai" disabled={!aiGeneratedImage}>AI Visualization</TabsTrigger>
               </TabsList>
               
               <TabsContent value="input" className="mt-4">
@@ -324,191 +583,137 @@ const Analysis = () => {
                   <CardHeader>
                     <CardTitle>Input Parameters</CardTitle>
                     <CardDescription>
-                      Enter values between 0-10 for each metric to calculate your {currentFeature?.name}
+                      Fill in the details below to analyze your {currentFeature.name.toLowerCase()}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {currentFeature && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {currentFeature.metrics.map((metric) => (
-                          <div key={metric} className="space-y-2">
-                            <label htmlFor={`${metric}`} className="text-sm font-medium">
-                              {metric} (0-10)
-                            </label>
-                            <Input
-                              id={`${metric}`}
-                              type="number"
-                              min="0"
-                              max="10"
-                              step="0.1"
-                              placeholder={`Enter ${metric} (0-10)`}
-                              value={inputs[currentFeature.id]?.[metric.toLowerCase().replace(/\s+/g, '')] || ''}
-                              onChange={(e) => handleInputChange(currentFeature.id, metric, e.target.value)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {renderInputForm()}
                   </CardContent>
-                  <CardFooter>
-                    <Button 
-                      onClick={() => calculateAnalysis(currentFeature?.id || '')}
-                      disabled={isLoading}
-                      className="w-full md:w-auto"
+                  <CardFooter className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFormInputs({});
+                      }}
                     >
-                      {isLoading ? 'Calculating...' : 'Calculate Results'}
+                      Reset
+                    </Button>
+                    <Button
+                      onClick={handleCalculate}
+                      disabled={isLoading || !currentFeature.implemented}
+                    >
+                      {isLoading ? 'Calculating...' : 'Run Analysis'}
                     </Button>
                   </CardFooter>
                 </Card>
               </TabsContent>
               
               <TabsContent value="results" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Analysis Results</CardTitle>
-                    <CardDescription>
-                      {results[currentFeature?.id || ''] 
-                        ? `Overall score: ${results[currentFeature?.id || ''].score}/10` 
-                        : 'No results calculated yet'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {results[currentFeature?.id || ''] ? (
-                      <div className="space-y-6">
-                        <div className="h-80">
+                {results && (
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <CardTitle>Analysis Results</CardTitle>
+                            <CardDescription>
+                              Overall Score: {results.score}/100
+                            </CardDescription>
+                          </div>
+                          <div className="text-3xl font-bold">{results.score}%</div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-80 mb-8">
                           <ChartContainer config={{}} className="h-full">
-                            {currentFeature?.chartType === 'bar' && (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={results[currentFeature.id].data}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="name" />
-                                  <YAxis domain={[0, 10]} />
-                                  <Tooltip content={<ChartTooltipContent />} />
-                                  <Legend />
-                                  <Bar dataKey="value" fill="#8884d8" />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            )}
-                            
-                            {currentFeature?.chartType === 'line' && (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={results[currentFeature.id].data}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="name" />
-                                  <YAxis />
-                                  <Tooltip content={<ChartTooltipContent />} />
-                                  <Legend />
-                                  <Line type="monotone" dataKey="value" stroke="#8884d8" />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            )}
-                            
-                            {currentFeature?.chartType === 'area' && (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={results[currentFeature.id].data}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="name" />
-                                  <YAxis domain={[0, 10]} />
-                                  <Tooltip content={<ChartTooltipContent />} />
-                                  <Legend />
-                                  <Area type="monotone" dataKey="value" fill="#8884d8" stroke="#8884d8" />
-                                </AreaChart>
-                              </ResponsiveContainer>
-                            )}
-                            
-                            {currentFeature?.chartType === 'pie' && (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                  <Pie
-                                    data={results[currentFeature.id].data}
-                                    dataKey="value"
-                                    nameKey="name"
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={100}
-                                    label={(entry) => entry.name}
-                                  />
-                                  <Tooltip content={<ChartTooltipContent />} />
-                                  <Legend />
-                                </PieChart>
-                              </ResponsiveContainer>
-                            )}
+                            {renderChart()}
                           </ChartContainer>
                         </div>
                         
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Metric</TableHead>
-                              <TableHead className="text-right">Value</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {results[currentFeature.id].data.map((item) => (
-                              <TableRow key={item.name}>
-                                <TableCell>{item.name}</TableCell>
-                                <TableCell className="text-right">{item.value}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                        
-                        <Button 
-                          onClick={() => generateAIChart(currentFeature?.id || '')}
-                          disabled={isGeneratingChart}
+                        <h3 className="text-lg font-medium mb-4">Key Metrics</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {results.metrics.map((metric, i) => (
+                            <Card key={i} className="overflow-hidden">
+                              <CardHeader className="p-4 pb-2">
+                                <CardTitle className="text-sm font-medium">{metric.name}</CardTitle>
+                              </CardHeader>
+                              <CardContent className="p-4 pt-0">
+                                <span className="text-lg font-medium">
+                                  {metric.value}
+                                </span>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </CardContent>
+                      <CardFooter className="flex justify-between">
+                        <Button
                           variant="outline"
-                          className="w-full"
+                          onClick={() => setCurrentTab('input')}
                         >
-                          {isGeneratingChart ? 'Generating...' : 'Generate AI Chart'}
+                          Edit Inputs
                         </Button>
-                      </div>
-                    ) : (
-                      <div className="text-center py-10 text-muted-foreground">
-                        <p>Calculate results first to see analysis</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                        <div className="flex space-x-2">
+                          <Button variant="outline" onClick={saveAnalysisResults}>
+                            Save Results
+                          </Button>
+                          <Button 
+                            onClick={generateAIChart}
+                            disabled={isGeneratingAI}
+                          >
+                            {isGeneratingAI ? 'Generating...' : 'Generate AI Chart'}
+                          </Button>
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  </div>
+                )}
               </TabsContent>
               
               <TabsContent value="ai" className="mt-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>AI Generated Visualization</CardTitle>
+                    <CardTitle>AI-Generated Visualization</CardTitle>
                     <CardDescription>
-                      Advanced chart generated by AI based on your analysis
+                      Custom visualization created based on your analysis data
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    {aiGeneratedChart ? (
-                      <div className="flex flex-col items-center">
-                        <img 
-                          src={aiGeneratedChart} 
-                          alt="AI Generated Chart" 
-                          className="max-w-full max-h-[500px] rounded-md shadow-md"
-                        />
-                        <Button
-                          variant="outline"
-                          className="mt-4"
-                          onClick={() => {
-                            const link = document.createElement('a');
-                            link.href = aiGeneratedChart;
-                            link.download = `${currentFeature?.name}-chart.png`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }}
-                        >
-                          Download Chart
-                        </Button>
-                      </div>
+                  <CardContent className="flex flex-col items-center">
+                    {aiGeneratedImage ? (
+                      <img 
+                        src={aiGeneratedImage} 
+                        alt="AI Generated Chart" 
+                        className="max-w-full max-h-[500px] border rounded-md shadow-md"
+                      />
                     ) : (
-                      <div className="text-center py-20 text-muted-foreground">
-                        <p>No AI-generated chart available yet</p>
-                        <p className="text-sm mt-2">Click "Generate AI Chart" in the Results tab to create one</p>
+                      <div className="text-center p-12 text-muted-foreground">
+                        <p>No AI visualization generated yet</p>
                       </div>
                     )}
                   </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentTab('results')}
+                    >
+                      Back to Results
+                    </Button>
+                    {aiGeneratedImage && (
+                      <Button
+                        onClick={() => {
+                          // Create a download link
+                          const link = document.createElement('a');
+                          link.href = aiGeneratedImage;
+                          link.download = `${currentFeature.name}_visualization.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      >
+                        Download Image
+                      </Button>
+                    )}
+                  </CardFooter>
                 </Card>
               </TabsContent>
             </Tabs>
