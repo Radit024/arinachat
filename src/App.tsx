@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Analysis from "./pages/Analysis";
 
 // Create a new QueryClient instance outside the component
 const queryClient = new QueryClient();
@@ -38,6 +39,11 @@ const App = () => {
                 <Route path="/chat/:chatId" element={
                   <ProtectedRoute>
                     <Index />
+                  </ProtectedRoute>
+                } />
+                <Route path="/analysis" element={
+                  <ProtectedRoute>
+                    <Analysis />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />
