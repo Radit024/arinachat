@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, MessageSquare, LogOut } from 'lucide-react';
+import { Plus, MessageSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { analysisFeatures } from '@/data/analysisFeatures';
@@ -17,7 +17,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Share, Pencil, Archive, Trash2 } from 'lucide-react';
+import { Share, Pencil, Archive, Trash2, ChevronUp } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface SidebarProps {
@@ -28,7 +28,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: SidebarProps) => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
   const navigate = useNavigate();
   const { chatId } = useParams();
@@ -301,18 +301,22 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
       </ScrollArea>
       
       <div className={cn("border-t border-arina-medium p-3", !isOpen && "md:hidden")}>
-        {user && (
-          <div className="mb-3 px-2">
-            <div className="text-xs text-arina-cream">{user.email}</div>
-          </div>
-        )}
         <Button
           variant="ghost"
-          className="w-full justify-start text-left text-arina-cream hover:bg-arina-dark flex items-center px-3 py-1.5 h-auto"
-          onClick={signOut}
+          className="w-full justify-start text-left text-arina-cream hover:bg-arina-dark flex items-center gap-2 px-3 py-1.5 h-auto"
         >
-          <LogOut size={14} className="mr-2" />
-          <span className="text-sm">Sign Out</span>
+          <div className="flex items-center">
+            <div className="mr-2">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L4 7.5L4 16.5L12 22L20 16.5V7.5L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">Upgrade plan</span>
+              <span className="text-xs text-arina-cream/70">More access to the best models</span>
+            </div>
+            <ChevronUp size={16} className="ml-2" />
+          </div>
         </Button>
       </div>
     </aside>
