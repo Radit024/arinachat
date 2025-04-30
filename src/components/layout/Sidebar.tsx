@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, MessageSquare } from 'lucide-react';
+import { Plus, MessageSquare, ChevronDown } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { analysisFeatures } from '@/data/analysisFeatures';
@@ -19,6 +18,12 @@ import {
 } from "@/components/ui/context-menu";
 import { Share, Pencil, Archive, Trash2, ChevronUp } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -276,21 +281,28 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
       </div>
       
       <ScrollArea className={cn("flex-1 px-2", !isOpen && "md:hidden")}>
-        <div className="space-y-1 py-1.5">
-          <h2 className="text-xs font-medium uppercase text-arina-cream/70 px-3 py-1">Analysis Features</h2>
-          {analysisFeatures.map((feature) => (
-            <Button
-              key={feature.id}
-              variant="ghost"
-              className={`w-full justify-start text-left text-arina-cream hover:bg-arina-dark px-3 py-1.5 h-auto text-sm ${
-                selectedFeature === feature.id ? 'bg-arina-dark' : ''
-              }`}
-              onClick={() => handleFeatureSelect(feature.id)}
-            >
-              {feature.name}
-            </Button>
-          ))}
-        </div>
+        {/* Replace the Analysis Features section with an Accordion */}
+        <Accordion type="single" collapsible className="w-full bg-transparent border-none">
+          <AccordionItem value="analysis-features" className="border-none">
+            <AccordionTrigger className="text-xs font-medium uppercase text-arina-cream/70 px-3 py-1 hover:no-underline">
+              Analysis Features
+            </AccordionTrigger>
+            <AccordionContent className="px-2 pt-1 pb-0 space-y-1">
+              {analysisFeatures.map((feature) => (
+                <Button
+                  key={feature.id}
+                  variant="ghost"
+                  className={`w-full justify-start text-left text-arina-cream hover:bg-arina-dark px-3 py-1.5 h-auto text-sm ${
+                    selectedFeature === feature.id ? 'bg-arina-dark' : ''
+                  }`}
+                  onClick={() => handleFeatureSelect(feature.id)}
+                >
+                  {feature.name}
+                </Button>
+              ))}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
         
         <Separator className="my-2 bg-arina-medium" />
         
