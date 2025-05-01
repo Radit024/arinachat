@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calculator, ChartBar, ChartLine, ChartPie, FileSpreadsheet, Layers, AlertCircle } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -271,6 +271,15 @@ const Analysis = () => {
   
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const location = useLocation();
+  const currentFeatureId = location.state?.featureId
+
+  useEffect(() => {
+    if (currentFeatureId) {
+      setSelectedFeature(currentFeatureId);
+    }
+  }, [currentFeatureId]);
   
   // Get the current feature configuration
   const currentFeature = analysisFeatures.find(f => f.id === selectedFeature) || analysisFeatures[0];
