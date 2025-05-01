@@ -66,8 +66,10 @@ const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: Sid
     };
   }, [user]);
 
-  const handleFeatureSelect = (featureId: string) => {
+  const handleFeatureSelect = (featureId : string) => {
     setSelectedFeature(featureId);
+    // Navigate to the analysis page with the selected feature
+    navigate('/analysis', { state: { featureId } });
   };
   
   const handleNewChat = () => {
