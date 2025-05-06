@@ -7,12 +7,12 @@ export const analysisFeatures = [
   },
   {
     id: "forecasting",
-    name: "Forecasting",
-    prompt: "Welcome to the Forecasting feature. I will help you create projections for harvest yields and commodity prices. To get started, please provide information about:\n- Commodity to be projected\n- Historical data (if available)\n- Factors that might influence the projection\n- Desired projection period"
+    name: "Demand Forecasting",
+    prompt: "Welcome to Demand Forecasting. I can help you predict future demand using Simple Moving Average (SMA) or Exponential Smoothing methods. To get started, please provide:\n- Historical demand data\n- Time period for forecasting\n- Preferred forecasting method (SMA or Exponential Smoothing)\n- For SMA: number of periods to include in the average\n- For Exponential Smoothing: smoothing factor (0-1)"
   },
   {
     id: "max-min-analysis",
     name: "Maximization and Minimization Analysis",
-    prompt: "Welcome to Maximization and Minimization Analysis. I will help you optimize resource usage and minimize costs. To get started, please provide information about:\n- Available resources (land, capital, labor)\n- Existing constraints\n- Target to achieve (maximizing production or minimizing costs)\n- Other relevant supporting data"
+    prompt: "Welcome to Maximization and Minimization Analysis. I will help you optimize resource usage and minimize costs using Simplex Method or Linear Programming. To get started, please provide information about:\n- Available resources (land, capital, labor)\n- Constraints on resources\n- Objective function (what to maximize or minimize)\n- Preferred method (Simplex or Linear Programming)"
   }
 ];

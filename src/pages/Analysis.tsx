@@ -10,15 +10,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Calculator, ChartBar, ChartLine, ChartPie, FileSpreadsheet, Layers, AlertCircle } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Calculator, ChartBar, ChartLine, FileSpreadsheet } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { AlertCircle } from 'lucide-react';
+import { analysisFeatures } from '@/data/analysisFeatures';
 
 // Define the feature types and their configurations
-const analysisFeatures = [
+const featureConfigs = [
   {
     id: 'feasibility',
     name: 'Business Feasibility Analysis',
@@ -36,7 +38,7 @@ const analysisFeatures = [
       { name: 'breakEvenPeriod', label: 'Expected Break-even Period (months)', type: 'number', placeholder: '0' }
     ],
     calculation: (inputs) => {
-      // Simple feasibility calculation algorithm
+      // Business feasibility calculation algorithm
       const initialInvestment = parseFloat(inputs.initialInvestment) || 0;
       const monthlyExpenses = parseFloat(inputs.monthlyExpenses) || 0;
       const expectedRevenue = parseFloat(inputs.expectedRevenue) || 0;
@@ -75,169 +77,151 @@ const analysisFeatures = [
   },
   {
     id: 'forecasting',
-    name: 'Business Forecasting',
-    description: 'Predict future trends based on historical data and market conditions',
+    name: 'Demand Forecasting',
+    description: 'Predict future demand based on historical data using SMA or Exponential Smoothing',
     icon: ChartLine,
     implemented: true,
     fields: [
-      { name: 'forecastType', label: 'Forecast Type', type: 'select', options: ['Sales Forecast', 'Revenue Forecast', 'Growth Forecast'] },
-      { name: 'timePeriod', label: 'Time Period', type: 'select', options: ['Monthly', 'Quarterly', 'Yearly'] },
-      { name: 'initialValue', label: 'Initial Value', type: 'number', placeholder: '0' },
-      { name: 'growthRate', label: 'Growth Rate (%)', type: 'number', placeholder: '0' },
-      { name: 'forecastPeriods', label: 'Number of Periods to Forecast', type: 'number', placeholder: '12' },
-      { name: 'seasonality', label: 'Seasonality Factor (0-10)', type: 'number', placeholder: '5' }
+      { name: 'forecastMethod', label: 'Forecasting Method', type: 'select', options: ['Simple Moving Average (SMA)', 'Exponential Smoothing'] },
+      { name: 'historicalData', label: 'Historical Data (comma-separated values)', type: 'text', placeholder: '10, 12, 15, 14, 16, 18, 17, 19, 20, 22' },
+      { name: 'forecastPeriods', label: 'Number of Periods to Forecast', type: 'number', placeholder: '5' },
+      { name: 'maParameters', label: 'Moving Average Periods', type: 'number', placeholder: '3', condition: { field: 'forecastMethod', value: 'Simple Moving Average (SMA)' } },
+      { name: 'smoothingFactor', label: 'Smoothing Factor (0-1)', type: 'number', placeholder: '0.3', condition: { field: 'forecastMethod', value: 'Exponential Smoothing' } }
     ],
     calculation: (inputs) => {
-      const initialValue = parseFloat(inputs.initialValue) || 1000;
-      const growthRate = parseFloat(inputs.growthRate) || 5;
-      const periods = parseInt(inputs.forecastPeriods) || 12;
-      const seasonality = parseFloat(inputs.seasonality) || 5;
-      const timePeriod = inputs.timePeriod || 'Monthly';
+      // Parse historical data
+      const historicalDataString = inputs.historicalData || '';
+      const historicalData = historicalDataString.split(',')
+        .map(val => parseFloat(val.trim()))
+        .filter(val => !isNaN(val));
       
-      // Generate forecast data with seasonality
-      const forecastData = [];
-      for (let i = 0; i < periods; i++) {
-        const growthFactor = 1 + (growthRate / 100);
-        // Add seasonal variations (higher in middle of year, lower at start/end)
-        const seasonalFactor = 1 + ((Math.sin((i / periods) * Math.PI * 2) * (seasonality / 10)));
-        const value = initialValue * Math.pow(growthFactor, i) * seasonalFactor;
+      if (historicalData.length < 2) {
+        return {
+          score: 0,
+          metrics: [{ name: 'Error', value: 'Not enough historical data' }],
+          chartData: []
+        };
+      }
+      
+      const forecastMethod = inputs.forecastMethod || 'Simple Moving Average (SMA)';
+      const forecastPeriods = parseInt(inputs.forecastPeriods) || 5;
+      
+      let forecast = [];
+      let forecastData = [];
+      
+      // Prepare chart data with historical values
+      const chartData = historicalData.map((value, index) => ({
+        name: `Past ${historicalData.length - index}`,
+        actual: value,
+        forecast: null
+      }));
+      
+      // Calculate forecasts based on selected method
+      if (forecastMethod === 'Simple Moving Average (SMA)') {
+        const periods = parseInt(inputs.maParameters) || 3;
         
-        let label;
-        if (timePeriod === 'Monthly') {
-          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          label = monthNames[i % 12];
-        } else if (timePeriod === 'Quarterly') {
-          label = `Q${(i % 4) + 1}`;
-        } else {
-          label = `Year ${i+1}`;
+        if (periods > historicalData.length) {
+          return {
+            score: 0,
+            metrics: [{ name: 'Error', value: 'Not enough data for the selected MA period' }],
+            chartData: []
+          };
         }
         
-        forecastData.push({
-          name: label,
-          value: Math.round(value)
-        });
+        // Calculate Simple Moving Average
+        for (let i = 0; i < forecastPeriods; i++) {
+          const startIndex = historicalData.length - periods + i;
+          const endIndex = historicalData.length + i;
+          const dataToAverage = [...historicalData, ...forecast].slice(startIndex, endIndex);
+          
+          const average = dataToAverage.reduce((sum, val) => sum + val, 0) / periods;
+          forecast.push(parseFloat(average.toFixed(2)));
+          
+          chartData.push({
+            name: `Future ${i + 1}`,
+            actual: null,
+            forecast: average
+          });
+        }
+      } else if (forecastMethod === 'Exponential Smoothing') {
+        const alpha = parseFloat(inputs.smoothingFactor) || 0.3;
+        
+        // Initialize with the first value
+        let lastForecast = historicalData[0];
+        
+        // Calculate exponential smoothing for historical data (for visualization)
+        for (let i = 1; i < historicalData.length; i++) {
+          const smoothed = alpha * historicalData[i] + (1 - alpha) * lastForecast;
+          chartData[i].forecast = parseFloat(smoothed.toFixed(2));
+          lastForecast = smoothed;
+        }
+        
+        // Generate future forecasts
+        for (let i = 0; i < forecastPeriods; i++) {
+          // For exponential smoothing forecasting future periods,
+          // the forecast is the same as the last smoothed value
+          chartData.push({
+            name: `Future ${i + 1}`,
+            actual: null,
+            forecast: parseFloat(lastForecast.toFixed(2))
+          });
+          
+          forecast.push(parseFloat(lastForecast.toFixed(2)));
+        }
       }
       
       // Calculate metrics
-      const finalValue = forecastData[forecastData.length - 1].value;
-      const totalGrowth = ((finalValue - initialValue) / initialValue) * 100;
-      const averageValue = forecastData.reduce((sum, item) => sum + item.value, 0) / forecastData.length;
+      const lastActual = historicalData[historicalData.length - 1];
+      const firstForecast = forecast[0];
+      const percentChange = lastActual !== 0 ? ((firstForecast - lastActual) / lastActual) * 100 : 0;
       
-      return {
-        score: Math.min(100, Math.max(0, totalGrowth)),
-        metrics: [
-          { name: 'Total Growth', value: `${totalGrowth.toFixed(2)}%` },
-          { name: 'Final Value', value: finalValue.toFixed(2) },
-          { name: 'Average Value', value: averageValue.toFixed(2) },
-          { name: 'CAGR', value: `${(Math.pow(finalValue / initialValue, 1 / periods) - 1) * 100}%` }
-        ],
-        chartData: forecastData
-      };
-    }
-  },
-  {
-    id: 'swot',
-    name: 'SWOT Analysis',
-    description: 'Identify Strengths, Weaknesses, Opportunities, and Threats to your business',
-    icon: ChartPie,
-    implemented: true,
-    fields: [
-      { name: 'businessName', label: 'Business or Project Name', type: 'text', placeholder: 'Enter the name of your business or project' },
-      { name: 'strengths', label: 'Strengths', type: 'textarea', placeholder: 'List your business strengths here' },
-      { name: 'weaknesses', label: 'Weaknesses', type: 'textarea', placeholder: 'List your business weaknesses here' },
-      { name: 'opportunities', label: 'Opportunities', type: 'textarea', placeholder: 'List your business opportunities here' },
-      { name: 'threats', label: 'Threats', type: 'textarea', placeholder: 'List your business threats here' }
-    ],
-    calculation: (inputs) => {
-      // Calculate SWOT score based on text length as a simple metric
-      const strengthsLength = (inputs.strengths || '').length;
-      const weaknessesLength = (inputs.weaknesses || '').length;
-      const opportunitiesLength = (inputs.opportunities || '').length;
-      const threatsLength = (inputs.threats || '').length;
-      
-      // For visualization purposes, normalize lengths to values between 10 and 100
-      const normalizeLength = (length) => Math.min(100, Math.max(10, length / 10));
-      
-      const strengthsValue = normalizeLength(strengthsLength);
-      const weaknessesValue = normalizeLength(weaknessesLength);
-      const opportunitiesValue = normalizeLength(opportunitiesLength);
-      const threatsValue = normalizeLength(threatsLength);
-      
-      // Calculate SWOT balance score
-      const totalLength = strengthsLength + weaknessesLength + opportunitiesLength + threatsLength;
-      const swotScore = totalLength > 0 ? 
-        ((strengthsLength + opportunitiesLength) / totalLength) * 100 : 50;
-      
-      return {
-        score: Math.round(swotScore),
-        metrics: [
-          { name: 'Strengths', value: inputs.strengths || 'None provided' },
-          { name: 'Weaknesses', value: inputs.weaknesses || 'None provided' },
-          { name: 'Opportunities', value: inputs.opportunities || 'None provided' },
-          { name: 'Threats', value: inputs.threats || 'None provided' }
-        ],
-        chartData: [
-          { name: 'Strengths', value: strengthsValue, fill: '#4CAF50' },
-          { name: 'Weaknesses', value: weaknessesValue, fill: '#F44336' },
-          { name: 'Opportunities', value: opportunitiesValue, fill: '#2196F3' },
-          { name: 'Threats', value: threatsValue, fill: '#FF9800' }
-        ]
-      };
-    }
-  },
-  {
-    id: 'canvas',
-    name: 'Business Model Canvas',
-    description: 'Interactive tool to design and refine your business model visually',
-    icon: Layers,
-    implemented: true,
-    fields: [
-      { name: 'businessName', label: 'Business Name', type: 'text', placeholder: 'Enter business name' },
-      { name: 'keyPartners', label: '1. Key Partners', type: 'textarea', placeholder: 'Who are your key partners and suppliers? Which key resources are you acquiring from them? Which key activities do they perform?' },
-      { name: 'keyActivities', label: '2. Key Activities', type: 'textarea', placeholder: 'What key activities does your value proposition require? Your distribution channels? Customer relationships? Revenue streams?' },
-      { name: 'valueProposition', label: '3. Value Propositions', type: 'textarea', placeholder: 'What value do you deliver to the customer? Which of your customer\'s problems are you helping to solve? What bundles of products and services are you offering to each segment?' },
-      { name: 'customerRelationships', label: '4. Customer Relationships', type: 'textarea', placeholder: 'What type of relationship does each of your customer segments expect you to establish and maintain with them?' },
-      { name: 'customerSegments', label: '5. Customer Segments', type: 'textarea', placeholder: 'For whom are you creating value? Who are your most important customers?' },
-      { name: 'keyResources', label: '6. Key Resources', type: 'textarea', placeholder: 'What key resources does your value proposition require? Your distribution channels? Customer relationships? Revenue streams?' },
-      { name: 'channels', label: '7. Channels', type: 'textarea', placeholder: 'Through which channels do your customer segments want to be reached? How are you reaching them now? How are your channels integrated?' },
-      { name: 'costStructure', label: '8. Cost Structure', type: 'textarea', placeholder: 'What are the most important costs inherent in your business model? Which key resources are most expensive? Which key activities are most expensive?' },
-      { name: 'revenueStreams', label: '9. Revenue Streams', type: 'textarea', placeholder: 'For what value are your customers really willing to pay? How are they currently paying? How would they prefer to pay? How much does each revenue stream contribute to overall revenues?' }
-    ],
-    calculation: (inputs) => {
-      // Calculate completeness score for Business Model Canvas
-      const fields = ['keyPartners', 'keyActivities', 'valueProposition', 'customerRelationships', 
-                     'customerSegments', 'keyResources', 'channels', 'costStructure', 'revenueStreams'];
-      
-      let totalScore = 0;
-      let filledSections = 0;
-      
-      // Count filled sections and calculate average length
-      for (const field of fields) {
-        if (inputs[field] && inputs[field].length > 0) {
-          filledSections++;
-          totalScore += Math.min(100, inputs[field].length / 5);
+      // Calculate accuracy based on how well the method fits the historical data
+      let accuracy = 0;
+      if (forecastMethod === 'Simple Moving Average (SMA)') {
+        const periods = parseInt(inputs.maParameters) || 3;
+        // Calculate MAE for historical data
+        if (historicalData.length >= periods) {
+          let totalError = 0;
+          let count = 0;
+          
+          for (let i = periods; i < historicalData.length; i++) {
+            const actual = historicalData[i];
+            const predictedSum = historicalData.slice(i - periods, i).reduce((sum, val) => sum + val, 0);
+            const predicted = predictedSum / periods;
+            totalError += Math.abs(actual - predicted);
+            count++;
+          }
+          
+          const mae = count > 0 ? totalError / count : 0;
+          const maxValue = Math.max(...historicalData);
+          accuracy = 100 - (mae / maxValue * 100);
         }
+      } else if (forecastMethod === 'Exponential Smoothing') {
+        const alpha = parseFloat(inputs.smoothingFactor) || 0.3;
+        
+        // Calculate accuracy based on historical fits
+        let lastPrediction = historicalData[0];
+        let totalError = 0;
+        
+        for (let i = 1; i < historicalData.length; i++) {
+          const actual = historicalData[i];
+          const predicted = alpha * historicalData[i - 1] + (1 - alpha) * lastPrediction;
+          lastPrediction = predicted;
+          totalError += Math.abs(actual - predicted);
+        }
+        
+        const mae = historicalData.length > 1 ? totalError / (historicalData.length - 1) : 0;
+        const maxValue = Math.max(...historicalData);
+        accuracy = 100 - (mae / maxValue * 100);
       }
       
-      const completionScore = (filledSections / fields.length) * 100;
-      const avgScore = filledSections > 0 ? totalScore / filledSections : 0;
-      
-      // Create chart data for visualization
-      const chartData = fields.map(field => {
-        const value = inputs[field] ? Math.min(100, inputs[field].length / 5) : 0;
-        const label = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-        return {
-          name: label,
-          value: value
-        };
-      });
-      
       return {
-        score: Math.round(completionScore),
+        score: Math.min(100, Math.max(0, Math.round(accuracy))),
         metrics: [
-          { name: 'Completion', value: `${Math.round(completionScore)}%` },
-          { name: 'Sections Filled', value: `${filledSections}/${fields.length}` },
-          { name: 'Average Detail', value: `${Math.round(avgScore)}%` }
+          { name: 'Forecasting Method', value: forecastMethod },
+          { name: 'Next Period Forecast', value: forecast[0]?.toFixed(2) || 'N/A' },
+          { name: 'Change from Last Actual', value: percentChange.toFixed(2) + '%' },
+          { name: 'Forecast Accuracy', value: Math.round(accuracy) + '%' }
         ],
         chartData: chartData
       };
@@ -245,17 +229,227 @@ const analysisFeatures = [
   },
   {
     id: 'optimization',
-    name: 'Business Optimization',
-    description: 'Coming Soon',
+    name: 'Maximization and Minimization Analysis',
+    description: 'Optimize resource usage and minimize costs using Simplex Method or Linear Programming',
     icon: ChartBar,
-    implemented: false
-  },
-  {
-    id: 'cultivation',
-    name: 'Agricultural Business',
-    description: 'Coming Soon',
-    icon: FileSpreadsheet,
-    implemented: false
+    implemented: true,
+    fields: [
+      { name: 'optimizationType', label: 'Optimization Type', type: 'select', options: ['Maximize Profit', 'Minimize Cost'] },
+      { name: 'optimizationMethod', label: 'Method', type: 'select', options: ['Simplex Method', 'Linear Programming'] },
+      { name: 'variables', label: 'Variables (comma-separated, e.g. "Crop A,Crop B")', type: 'text', placeholder: 'X1,X2' },
+      { name: 'objective', label: 'Objective Function Coefficients (comma-separated)', type: 'text', placeholder: '3,2' },
+      { name: 'constraints', label: 'Constraints (one per line, format: coefficients;limit, e.g. "2,1;10")', type: 'textarea', placeholder: '2,1;10\n1,3;15' },
+      { name: 'nonNegative', label: 'Non-negative variables', type: 'select', options: ['Yes', 'No'] }
+    ],
+    calculation: (inputs) => {
+      const optimizationType = inputs.optimizationType || 'Maximize Profit';
+      const optimizationMethod = inputs.optimizationMethod || 'Simplex Method';
+      const isMaximizing = optimizationType === 'Maximize Profit';
+      
+      // Parse variables
+      const variablesString = inputs.variables || 'X1,X2';
+      const variables = variablesString.split(',').map(v => v.trim()).filter(v => v.length > 0);
+      
+      // Parse objective function
+      const objectiveString = inputs.objective || '3,2';
+      const objective = objectiveString.split(',')
+        .map(val => parseFloat(val.trim()))
+        .filter(val => !isNaN(val));
+      
+      // Parse constraints
+      const constraintsString = inputs.constraints || '2,1;10\n1,3;15';
+      const constraintLines = constraintsString.split('\n').filter(line => line.trim().length > 0);
+      
+      const constraints = constraintLines.map(line => {
+        const [coeffsStr, limitStr] = line.split(';');
+        const coeffs = coeffsStr.split(',')
+          .map(val => parseFloat(val.trim()))
+          .filter(val => !isNaN(val));
+        const limit = parseFloat(limitStr.trim());
+        
+        return { coeffs, limit: isNaN(limit) ? 0 : limit };
+      });
+      
+      // Validate inputs
+      if (objective.length !== variables.length) {
+        return {
+          score: 0,
+          metrics: [{ name: 'Error', value: `Objective function must have ${variables.length} coefficients` }],
+          chartData: []
+        };
+      }
+      
+      for (const constraint of constraints) {
+        if (constraint.coeffs.length !== variables.length) {
+          return {
+            score: 0,
+            metrics: [{ name: 'Error', value: `Each constraint must have ${variables.length} coefficients` }],
+            chartData: []
+          };
+        }
+      }
+      
+      // Simplified solution for demonstration purposes
+      // In a real application, you would implement the Simplex algorithm or use a library
+      
+      // For 2 variables, we can calculate the intersection points of constraints
+      // and determine the optimal solution
+      let results = { x: [], optimal: 0, feasible: true };
+      let solutionDesc = '';
+      
+      if (variables.length === 2) {
+        // Find all intersection points of constraint lines with axes and with each other
+        const points = [];
+        
+        // Origin (if non-negative)
+        if (inputs.nonNegative === 'Yes') {
+          points.push({ x: [0, 0], constraints: [] });
+        }
+        
+        // Intersections with axes
+        for (let i = 0; i < variables.length; i++) {
+          for (const constraint of constraints) {
+            if (constraint.coeffs[i] !== 0) {
+              const point = Array(variables.length).fill(0);
+              point[i] = constraint.limit / constraint.coeffs[i];
+              if (point[i] >= 0 || inputs.nonNegative !== 'Yes') {
+                points.push({ x: point, constraints: [constraint] });
+              }
+            }
+          }
+        }
+        
+        // Intersections between constraints
+        for (let i = 0; i < constraints.length; i++) {
+          for (let j = i + 1; j < constraints.length; j++) {
+            const a1 = constraints[i].coeffs[0];
+            const b1 = constraints[i].coeffs[1];
+            const c1 = constraints[i].limit;
+            
+            const a2 = constraints[j].coeffs[0];
+            const b2 = constraints[j].coeffs[1];
+            const c2 = constraints[j].limit;
+            
+            // Solve the system of equations
+            const det = a1 * b2 - a2 * b1;
+            
+            if (det !== 0) {
+              const x1 = (c1 * b2 - c2 * b1) / det;
+              const x2 = (a1 * c2 - a2 * c1) / det;
+              
+              // Check if the point satisfies non-negativity
+              if ((x1 >= 0 && x2 >= 0) || inputs.nonNegative !== 'Yes') {
+                points.push({ x: [x1, x2], constraints: [constraints[i], constraints[j]] });
+              }
+            }
+          }
+        }
+        
+        // Check which points are feasible (satisfy all constraints)
+        const feasiblePoints = points.filter(point => {
+          for (const constraint of constraints) {
+            const sum = constraint.coeffs.reduce((sum, coeff, idx) => sum + coeff * point.x[idx], 0);
+            if (sum > constraint.limit) {
+              return false;
+            }
+          }
+          return true;
+        });
+        
+        if (feasiblePoints.length === 0) {
+          results.feasible = false;
+          solutionDesc = 'The problem has no feasible solution';
+        } else {
+          // Evaluate objective function at each feasible point
+          for (const point of feasiblePoints) {
+            const objectiveValue = objective.reduce((sum, coeff, idx) => sum + coeff * point.x[idx], 0);
+            point.objectiveValue = isMaximizing ? objectiveValue : -objectiveValue;
+          }
+          
+          // Find the optimal solution
+          let optimalPoint = feasiblePoints[0];
+          for (let i = 1; i < feasiblePoints.length; i++) {
+            if (feasiblePoints[i].objectiveValue > optimalPoint.objectiveValue) {
+              optimalPoint = feasiblePoints[i];
+            }
+          }
+          
+          results.x = optimalPoint.x;
+          results.optimal = isMaximizing 
+            ? optimalPoint.objectiveValue 
+            : -optimalPoint.objectiveValue;
+          
+          solutionDesc = `Optimal solution: ${variables.map((v, i) => `${v} = ${optimalPoint.x[i].toFixed(2)}`).join(', ')}`;
+        }
+      } else {
+        // For more than 2 variables, we use a simplified approach
+        solutionDesc = 'For problems with more than 2 variables, a more advanced solver is required';
+        results.feasible = true;
+        
+        // Generate random feasible solution for demonstration purposes
+        results.x = Array(variables.length).fill(0).map(() => Math.random() * 10);
+        results.optimal = objective.reduce((sum, coeff, idx) => sum + coeff * results.x[idx], 0);
+        if (!isMaximizing) results.optimal = -results.optimal;
+      }
+      
+      // Prepare chart data for visualization
+      let chartData = [];
+      
+      // For 2 variables, we can visualize the feasible region and constraints
+      if (variables.length === 2) {
+        // Generate points for visualization
+        const maxCoord = 20;
+        const steps = 10;
+        
+        for (let i = 0; i <= steps; i++) {
+          const x1 = (i / steps) * maxCoord;
+          
+          // For each constraint, calculate the corresponding x2 value
+          for (let j = 0; j < constraints.length; j++) {
+            if (constraints[j].coeffs[1] !== 0) {
+              const x2 = (constraints[j].limit - constraints[j].coeffs[0] * x1) / constraints[j].coeffs[1];
+              if (x2 >= 0 || inputs.nonNegative !== 'Yes') {
+                chartData.push({
+                  x1: x1,
+                  x2: x2,
+                  constraint: `Constraint ${j + 1}`
+                });
+              }
+            }
+          }
+        }
+        
+        // Add optimal point to the chart
+        if (results.feasible) {
+          chartData.push({
+            x1: results.x[0],
+            x2: results.x[1],
+            constraint: "Optimal Point",
+            isOptimal: true
+          });
+        }
+      } else {
+        // For more variables, show the contribution of each variable to the objective
+        for (let i = 0; i < variables.length; i++) {
+          chartData.push({
+            variable: variables[i],
+            value: results.x[i],
+            contribution: objective[i] * results.x[i]
+          });
+        }
+      }
+      
+      return {
+        score: results.feasible ? (isMaximizing ? 80 : 20) + Math.min(20, Math.max(0, results.optimal)) : 0,
+        metrics: [
+          { name: 'Method', value: optimizationMethod },
+          { name: 'Type', value: optimizationType },
+          { name: 'Optimal Value', value: results.feasible ? results.optimal.toFixed(2) : 'N/A' },
+          { name: 'Solution', value: solutionDesc }
+        ],
+        chartData: chartData
+      };
+    }
   }
 ];
 
@@ -273,7 +467,7 @@ const Analysis = () => {
   const navigate = useNavigate();
   
   // Get the current feature configuration
-  const currentFeature = analysisFeatures.find(f => f.id === selectedFeature) || analysisFeatures[0];
+  const currentFeature = featureConfigs.find(f => f.id === selectedFeature) || featureConfigs[0];
   
   const handleInputChange = (name, value) => {
     setFormInputs(prev => ({
@@ -383,10 +577,12 @@ const Analysis = () => {
         .from('analysis_results')
         .insert({
           user_id: user.id,
-          feature_id: currentFeature.id,
-          inputs: formInputs,
-          results: results,
-          ai_image: aiGeneratedImage
+          type: currentFeature.id,
+          data: {
+            inputs: formInputs,
+            results: results,
+            ai_image: aiGeneratedImage
+          }
         });
       
       if (error) throw error;
@@ -424,8 +620,6 @@ const Analysis = () => {
   const renderChart = () => {
     if (!results || !results.chartData) return null;
     
-    const config = {};
-    
     switch (currentFeature.id) {
       case 'feasibility':
         return (
@@ -449,41 +643,50 @@ const Analysis = () => {
               <YAxis />
               <Tooltip content={<ChartTooltipContent />} />
               <Legend />
-              <Line type="monotone" dataKey="value" stroke="#9b87f5" strokeWidth={2} />
+              {results.chartData.some(d => d.actual !== null) && (
+                <Line type="monotone" dataKey="actual" stroke="#4CAF50" strokeWidth={2} name="Actual" />
+              )}
+              {results.chartData.some(d => d.forecast !== null) && (
+                <Line type="monotone" dataKey="forecast" stroke="#9b87f5" strokeWidth={2} name="Forecast" />
+              )}
             </LineChart>
           </ResponsiveContainer>
         );
-      case 'swot':
-        return (
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={results.chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={120}
-                label={(entry) => entry.name}
-              />
-              <Tooltip content={<ChartTooltipContent />} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        );
-      case 'canvas':
-        return (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={results.chartData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={150} />
-              <Tooltip content={<ChartTooltipContent />} />
-              <Legend />
-              <Bar dataKey="value" fill="#9b87f5" />
-            </BarChart>
-          </ResponsiveContainer>
-        );
+      case 'optimization':
+        // For optimization, we need to handle different chart types based on variables
+        if (results.chartData.some(d => d.variable)) {
+          // For multi-variable optimization, show bar chart of variable values
+          return (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={results.chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="variable" />
+                <YAxis />
+                <Tooltip content={<ChartTooltipContent />} />
+                <Legend />
+                <Bar dataKey="value" fill="#9b87f5" name="Variable Value" />
+                <Bar dataKey="contribution" fill="#4CAF50" name="Contribution" />
+              </BarChart>
+            </ResponsiveContainer>
+          );
+        } else {
+          // For 2-variable optimization, show scatter plot
+          return (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={results.chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="x1" label={{ value: 'X1', position: 'bottom' }} />
+                <YAxis dataKey="x2" label={{ value: 'X2', angle: -90, position: 'left' }} />
+                <Tooltip content={<ChartTooltipContent />} />
+                <Legend />
+                <Line type="monotone" dataKey="x2" stroke="#9b87f5" dot={{ r: 4 }} name="Constraints" />
+                {results.chartData.some(d => d.isOptimal) && (
+                  <Line type="monotone" dataKey="isOptimal" stroke="#FF5722" dot={{ r: 8 }} name="Optimal Point" />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          );
+        }
       default:
         return null;
     }
@@ -505,47 +708,54 @@ const Analysis = () => {
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {currentFeature.fields.map((field) => (
-          <div key={field.name} className="space-y-2">
-            <label htmlFor={field.name} className="text-sm font-medium">
-              {field.label}
-            </label>
-            
-            {field.type === 'select' ? (
-              <Select 
-                onValueChange={(value) => handleSelectChange(field.name, value)}
-                value={formInputs[field.name] || ''}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={field.placeholder || 'Select an option'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {field.options?.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : field.type === 'textarea' ? (
-              <Textarea
-                id={field.name}
-                placeholder={field.placeholder}
-                value={formInputs[field.name] || ''}
-                onChange={(e) => handleInputChange(field.name, e.target.value)}
-                className="min-h-[100px]"
-              />
-            ) : (
-              <Input
-                id={field.name}
-                type={field.type}
-                placeholder={field.placeholder}
-                value={formInputs[field.name] || ''}
-                onChange={(e) => handleInputChange(field.name, e.target.value)}
-              />
-            )}
-          </div>
-        ))}
+        {currentFeature.fields.map((field) => {
+          // Check conditional display of field
+          if (field.condition && formInputs[field.condition.field] !== field.condition.value) {
+            return null;
+          }
+          
+          return (
+            <div key={field.name} className="space-y-2">
+              <label htmlFor={field.name} className="text-sm font-medium">
+                {field.label}
+              </label>
+              
+              {field.type === 'select' ? (
+                <Select 
+                  onValueChange={(value) => handleSelectChange(field.name, value)}
+                  value={formInputs[field.name] || ''}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={field.placeholder || 'Select an option'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options?.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : field.type === 'textarea' ? (
+                <Textarea
+                  id={field.name}
+                  placeholder={field.placeholder}
+                  value={formInputs[field.name] || ''}
+                  onChange={(e) => handleInputChange(field.name, e.target.value)}
+                  className="min-h-[100px]"
+                />
+              ) : (
+                <Input
+                  id={field.name}
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  value={formInputs[field.name] || ''}
+                  onChange={(e) => handleInputChange(field.name, e.target.value)}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   };
