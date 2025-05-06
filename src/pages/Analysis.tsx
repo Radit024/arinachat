@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -24,53 +23,80 @@ const featureConfigs = [
   {
     id: 'feasibility',
     name: 'Business Feasibility Analysis',
-    description: 'Analyze market conditions, costs, and potential returns to determine business viability',
+    description: 'Analyze investment costs, operational costs, and potential returns to determine business viability',
     icon: Calculator,
     implemented: true,
     fields: [
-      { name: 'businessName', label: 'Business Name', type: 'text', placeholder: 'Enter business name' },
-      { name: 'industry', label: 'Industry', type: 'text', placeholder: 'Enter industry' },
-      { name: 'initialInvestment', label: 'Initial Investment ($)', type: 'number', placeholder: '0' },
-      { name: 'monthlyExpenses', label: 'Monthly Expenses ($)', type: 'number', placeholder: '0' },
-      { name: 'expectedRevenue', label: 'Expected Annual Revenue ($)', type: 'number', placeholder: '0' },
-      { name: 'targetMarketSize', label: 'Target Market Size', type: 'text', placeholder: 'Enter market size' },
-      { name: 'growthRate', label: 'Expected Annual Growth Rate (%)', type: 'number', placeholder: '0' },
-      { name: 'breakEvenPeriod', label: 'Expected Break-even Period (months)', type: 'number', placeholder: '0' }
+      { name: 'investmentCost', label: 'Investment Cost (Biaya Investasi)', type: 'number', placeholder: '0' },
+      { name: 'operationalCost', label: 'Operational Cost per Month (Biaya Operasional per Bulan)', type: 'number', placeholder: '0' },
+      { name: 'productionCostPerUnit', label: 'Production Cost per Unit (Biaya Produksi per Unit)', type: 'number', placeholder: '0' },
+      { name: 'salesVolumePerMonth', label: 'Sales Volume per Month (Volume Penjualan per Bulan)', type: 'number', placeholder: '0' },
+      { name: 'markup', label: 'Markup (%)', type: 'number', placeholder: '0' }
     ],
     calculation: (inputs) => {
-      // Business feasibility calculation algorithm
-      const initialInvestment = parseFloat(inputs.initialInvestment) || 0;
-      const monthlyExpenses = parseFloat(inputs.monthlyExpenses) || 0;
-      const expectedRevenue = parseFloat(inputs.expectedRevenue) || 0;
-      const growthRate = parseFloat(inputs.growthRate) || 0;
-      const breakEvenPeriod = parseFloat(inputs.breakEvenPeriod) || 12;
+      // Parse input values
+      const investmentCost = parseFloat(inputs.investmentCost) || 0;
+      const operationalCost = parseFloat(inputs.operationalCost) || 0;
+      const productionCostPerUnit = parseFloat(inputs.productionCostPerUnit) || 0;
+      const salesVolumePerMonth = parseFloat(inputs.salesVolumePerMonth) || 0;
+      const markup = parseFloat(inputs.markup) || 0;
       
-      const annualExpenses = monthlyExpenses * 12;
-      const profit = expectedRevenue - annualExpenses;
-      const roi = initialInvestment > 0 ? (profit / initialInvestment) * 100 : 0;
-      const paybackPeriod = profit > 0 ? initialInvestment / profit : 0;
+      // Calculate base production cost per unit (HPP)
+      const hpp = productionCostPerUnit;
+      
+      // Calculate selling price per unit
+      const sellingPrice = hpp * (1 + markup/100);
+      
+      // Calculate monthly revenue
+      const revenue = sellingPrice * salesVolumePerMonth;
+      
+      // Calculate monthly profit
+      const monthlyProfit = revenue - (operationalCost + (productionCostPerUnit * salesVolumePerMonth));
+      
+      // Calculate annual profit
+      const annualProfit = monthlyProfit * 12;
+      
+      // Calculate ROI
+      const roi = investmentCost > 0 ? (annualProfit / investmentCost) * 100 : 0;
+      
+      // Calculate Break Even Point (BEP) in units
+      const fixedCosts = operationalCost;
+      const contributionMargin = sellingPrice - productionCostPerUnit;
+      const bepUnits = contributionMargin > 0 ? fixedCosts / contributionMargin : 0;
+      
+      // Calculate Payback Period (in months)
+      const paybackPeriod = monthlyProfit > 0 ? investmentCost / monthlyProfit : 0;
+      
+      // Calculate Profit Margin
+      const profitMargin = revenue > 0 ? (monthlyProfit / revenue) * 100 : 0;
       
       // Calculate feasibility score (0-100)
       let feasibilityScore = 0;
-      if (profit > 0) feasibilityScore += 30;
-      if (roi > 15) feasibilityScore += 20;
-      if (paybackPeriod < 2) feasibilityScore += 20;
-      if (growthRate > 5) feasibilityScore += 15;
-      if (breakEvenPeriod < 18) feasibilityScore += 15;
+      if (roi > 0) feasibilityScore += 20;
+      if (roi > 20) feasibilityScore += 15;
+      if (paybackPeriod < 24) feasibilityScore += 20;
+      if (paybackPeriod < 12) feasibilityScore += 15;
+      if (profitMargin > 10) feasibilityScore += 15;
+      if (monthlyProfit > operationalCost) feasibilityScore += 15;
       
       return {
         score: feasibilityScore,
         metrics: [
-          { name: 'Profit Margin', value: profit > 0 ? (profit / expectedRevenue * 100).toFixed(2) + '%' : '0%' },
-          { name: 'ROI', value: roi.toFixed(2) + '%' },
-          { name: 'Payback Period', value: paybackPeriod.toFixed(2) + ' years' },
-          { name: 'Break-even', value: breakEvenPeriod + ' months' }
+          { name: 'Production Cost (HPP) per Unit', value: hpp.toFixed(2) },
+          { name: 'Selling Price per Unit', value: sellingPrice.toFixed(2) },
+          { name: 'Revenue (Monthly)', value: revenue.toFixed(2) },
+          { name: 'Profit (Monthly)', value: monthlyProfit.toFixed(2) },
+          { name: 'ROI (Return on Investment)', value: roi.toFixed(2) + '%' },
+          { name: 'BEP (Break Even Point)', value: bepUnits.toFixed(2) + ' units' },
+          { name: 'Payback Period', value: paybackPeriod.toFixed(2) + ' months' },
+          { name: 'Profit Margin', value: profitMargin.toFixed(2) + '%' }
         ],
         chartData: [
-          { name: 'Initial Investment', value: initialInvestment },
-          { name: 'Annual Expenses', value: annualExpenses },
-          { name: 'Expected Revenue', value: expectedRevenue },
-          { name: 'Profit', value: profit > 0 ? profit : 0 }
+          { name: 'Investment', value: investmentCost },
+          { name: 'Monthly Operational Cost', value: operationalCost },
+          { name: 'Monthly Production Cost', value: productionCostPerUnit * salesVolumePerMonth },
+          { name: 'Monthly Revenue', value: revenue },
+          { name: 'Monthly Profit', value: monthlyProfit }
         ]
       };
     }
@@ -759,179 +785,3 @@ const Analysis = () => {
       </div>
     );
   };
-  
-  return (
-    <div className="flex h-screen bg-[#F8F8F4]">
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        setIsOpen={setIsSidebarOpen}
-        selectedFeature={selectedFeature}
-        setSelectedFeature={handleFeatureSelect}
-      />
-      
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${
-        isSidebarOpen ? 'md:ml-0' : 'md:ml-0 w-full'
-      }`}>
-        <Header toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
-        
-        <main className="flex-1 overflow-auto p-6 bg-[#F8F8F4]">
-          <div className="container mx-auto">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-[#1A1F2C]">{currentFeature.name}</h1>
-              <p className="text-muted-foreground">{currentFeature.description}</p>
-            </div>
-            
-            <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-              <TabsList>
-                <TabsTrigger value="input">Input Data</TabsTrigger>
-                <TabsTrigger value="results" disabled={!results}>Results</TabsTrigger>
-                <TabsTrigger value="ai" disabled={!aiGeneratedImage}>AI Visualization</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="input" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Input Parameters</CardTitle>
-                    <CardDescription>
-                      Fill in the details below to analyze your {currentFeature.name.toLowerCase()}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {renderInputForm()}
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setFormInputs({});
-                      }}
-                    >
-                      Reset
-                    </Button>
-                    <Button
-                      onClick={handleCalculate}
-                      disabled={isLoading || !currentFeature.implemented}
-                    >
-                      {isLoading ? 'Calculating...' : 'Run Analysis'}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="results" className="mt-4">
-                {results && (
-                  <div className="space-y-4">
-                    <Card>
-                      <CardHeader>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <CardTitle>Analysis Results</CardTitle>
-                            <CardDescription>
-                              Overall Score: {results.score}/100
-                            </CardDescription>
-                          </div>
-                          <div className="text-3xl font-bold">{results.score}%</div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-80 mb-8">
-                          <ChartContainer config={{}} className="h-full">
-                            {renderChart()}
-                          </ChartContainer>
-                        </div>
-                        
-                        <h3 className="text-lg font-medium mb-4">Key Metrics</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {results.metrics.map((metric, i) => (
-                            <Card key={i} className="overflow-hidden">
-                              <CardHeader className="p-4 pb-2">
-                                <CardTitle className="text-sm font-medium">{metric.name}</CardTitle>
-                              </CardHeader>
-                              <CardContent className="p-4 pt-0">
-                                <span className="text-lg font-medium">
-                                  {metric.value}
-                                </span>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-between">
-                        <Button
-                          variant="outline"
-                          onClick={() => setCurrentTab('input')}
-                        >
-                          Edit Inputs
-                        </Button>
-                        <div className="flex space-x-2">
-                          <Button variant="outline" onClick={saveAnalysisResults}>
-                            Save Results
-                          </Button>
-                          <Button 
-                            onClick={generateAIChart}
-                            disabled={isGeneratingAI}
-                          >
-                            {isGeneratingAI ? 'Generating...' : 'Generate AI Chart'}
-                          </Button>
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="ai" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>AI-Generated Visualization</CardTitle>
-                    <CardDescription>
-                      Custom visualization created based on your analysis data
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center">
-                    {aiGeneratedImage ? (
-                      <img 
-                        src={aiGeneratedImage} 
-                        alt="AI Generated Chart" 
-                        className="max-w-full max-h-[500px] border rounded-md shadow-md"
-                      />
-                    ) : (
-                      <div className="text-center p-12 text-muted-foreground">
-                        <p>No AI visualization generated yet</p>
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      onClick={() => setCurrentTab('results')}
-                    >
-                      Back to Results
-                    </Button>
-                    {aiGeneratedImage && (
-                      <Button
-                        onClick={() => {
-                          // Create a download link
-                          const link = document.createElement('a');
-                          link.href = aiGeneratedImage;
-                          link.download = `${currentFeature.name}_visualization.png`;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                      >
-                        Download Image
-                      </Button>
-                    )}
-                  </CardFooter>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </main>
-      </div>
-    </div>
-  );
-};
-
-export default Analysis;

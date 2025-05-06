@@ -3,7 +3,7 @@ export const analysisFeatures = [
   {
     id: "business-feasibility",
     name: "Business Feasibility Analysis",
-    prompt: "Welcome to Business Feasibility Analysis. I will help you evaluate the feasibility of your planned agricultural business. To get started, please provide information about:\n- Type of agricultural business to analyze\n- Available initial capital\n- Estimated operational costs\n- Target market and selling price\n- Other relevant supporting data"
+    prompt: "Welcome to Business Feasibility Analysis. I will help you evaluate the feasibility of your planned agricultural business. To get started, please provide information about:\n- Investment Cost (Biaya Investasi)\n- Operational Cost per Month (Biaya Operasional per Bulan)\n- Production Cost per Unit (Biaya Produksi per Unit)\n- Sales Volume per Month (Volume Penjualan per Bulan)\n- Markup (%)"
   },
   {
     id: "forecasting",
