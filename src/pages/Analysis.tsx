@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -785,3 +786,178 @@ const Analysis = () => {
       </div>
     );
   };
+  
+  // Get the current feature configuration
+  const currentFeature = featureConfigs.find(f => f.id === selectedFeature) || featureConfigs[0];
+  
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Sidebar */}
+      <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar}>
+        <div className="p-4">
+          <h2 className="text-lg font-semibold mb-4">Analysis Tools</h2>
+          <div className="space-y-2">
+            {featureConfigs.map((feature) => (
+              <button
+                key={feature.id}
+                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 transition-colors ${
+                  selectedFeature === feature.id
+                    ? 'bg-primary/10 text-primary'
+                    : 'hover:bg-muted'
+                }`}
+                onClick={() => handleFeatureSelect(feature.id)}
+              >
+                <feature.icon className="h-5 w-5" />
+                <span>{feature.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </Sidebar>
+
+      {/* Main content */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Header */}
+        <Header toggleSidebar={toggleSidebar} />
+
+        {/* Main content area */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-2xl font-bold mb-6">{currentFeature.name}</h1>
+            <p className="text-muted-foreground mb-8">{currentFeature.description}</p>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{currentFeature.name}</CardTitle>
+                <CardDescription>{currentFeature.description}</CardDescription>
+              </CardHeader>
+
+              <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+                <div className="px-6">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="input">Input</TabsTrigger>
+                    <TabsTrigger value="results" disabled={!results}>Results</TabsTrigger>
+                    <TabsTrigger value="ai" disabled={!aiGeneratedImage}>AI Visualization</TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <CardContent className="p-6">
+                  <TabsContent value="input" className="space-y-6">
+                    {renderInputForm()}
+                    
+                    <div className="flex justify-end space-x-4 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setFormInputs({})}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        onClick={handleCalculate}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Calculating...' : 'Run Analysis'}
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="results" className="space-y-6">
+                    {results && (
+                      <>
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-medium">Analysis Results</h3>
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                              Score: {results.score}%
+                            </span>
+                          </div>
+
+                          <div className="grid md:grid-cols-2 gap-4">
+                            {results.metrics.map((metric, i) => (
+                              <div key={i} className="bg-muted/50 p-4 rounded-lg">
+                                <h4 className="text-sm font-medium text-muted-foreground mb-1">{metric.name}</h4>
+                                <p className="text-xl font-semibold">{metric.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="bg-card border rounded-lg p-4 h-[300px]">
+                          {renderChart()}
+                        </div>
+
+                        <div className="flex justify-end space-x-4 pt-4">
+                          <Button
+                            variant="outline"
+                            onClick={() => setCurrentTab('input')}
+                          >
+                            Back to Input
+                          </Button>
+                          <Button
+                            onClick={generateAIChart}
+                            disabled={isGeneratingAI}
+                          >
+                            {isGeneratingAI ? 'Generating...' : 'Generate AI Chart'}
+                          </Button>
+                          {user && (
+                            <Button
+                              variant="default"
+                              onClick={saveAnalysisResults}
+                              disabled={isLoading}
+                            >
+                              Save Results
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="ai" className="space-y-6">
+                    {aiGeneratedImage && (
+                      <>
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="overflow-hidden rounded-lg border bg-card w-full max-w-3xl">
+                            <img 
+                              src={aiGeneratedImage} 
+                              alt="AI Generated Chart" 
+                              className="w-full h-auto object-contain"
+                            />
+                          </div>
+                          <div className="text-center mt-6">
+                            <p className="text-sm text-muted-foreground">
+                              This AI-generated chart visualization was created based on your analysis results.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end space-x-4 pt-4">
+                          <Button
+                            variant="outline"
+                            onClick={() => setCurrentTab('results')}
+                          >
+                            Back to Results
+                          </Button>
+                          {user && (
+                            <Button
+                              variant="default"
+                              onClick={saveAnalysisResults}
+                              disabled={isLoading}
+                            >
+                              Save Results with Chart
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </TabsContent>
+                </CardContent>
+              </Tabs>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Analysis;
