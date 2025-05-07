@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, MessageSquare, ChevronDown } from 'lucide-react';
@@ -32,7 +33,7 @@ interface SidebarProps {
   setSelectedFeature: (feature: string | null) => void;
 }
 
-const Sidebar = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }: SidebarProps) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, selectedFeature, setSelectedFeature }) => {
   const { user } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
   const navigate = useNavigate();

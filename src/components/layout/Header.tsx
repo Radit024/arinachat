@@ -30,7 +30,7 @@ interface HeaderProps {
   isSidebarOpen: boolean;
 }
 
-const Header = ({ toggleSidebar, isSidebarOpen }: HeaderProps) => {
+const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen }) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
